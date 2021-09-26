@@ -45,7 +45,6 @@ public class MQTTServerStarter {
     @PostConstruct
     public void mqttServerRUN(){
         EventLoopGroup bossGroup = new NioEventLoopGroup();
-
         EventLoopGroup eventExecutors = new NioEventLoopGroup();
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();

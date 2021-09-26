@@ -20,6 +20,8 @@ public class MessageId {
 
     private long timestamp;
 
+    private String clientId;
+
     @Override
     public boolean equals(Object o) {
         MessageId messageId1 = (MessageId) o;

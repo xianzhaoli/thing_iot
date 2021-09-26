@@ -37,8 +37,14 @@ public class MqttStoreService {
             Channel oldChannel =  clientIDChannel.get(clientId);
             boolean isOpen = oldChannel.isOpen();
             if(isOpen & oldChannel.equals(channel)){
-                //已经绑定
-                return;
+                //此处参考[MQTT-3.1.0-2]
+                //在一个网络连接上，客户端只能发送一次CONNECT报文。
+                //服务端必须将客户端发送的第二个CONNECT报文当作协议违规处理并断开客户端的连接。
+                if(oldChannel != null & oldChannel.equals(channel)){
+                    channel.close();
+                    unbinding(clientId,channel);
+                    return;
+                }
             }
             if(isOpen){
                 oldChannel.close();
@@ -60,11 +66,14 @@ public class MqttStoreService {
     }
 
 
-    public void bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId){
+    public boolean bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId){
         if(!subByTopic.containsKey(topic)){
             subByTopic.put(topic,new CopyOnWriteArrayList<>());
         }
         SubscribeClient subscribeClient = new SubscribeClient(mqttQoS,clientId,topic);
+        if(subByTopic.get(topic).contains(subscribeClient)){
+            return false;
+        }
         subByTopic.get(topic).add(subscribeClient);
 
         /** 方便维护 **/
@@ -72,6 +81,7 @@ public class MqttStoreService {
             clientIdSubList.put(clientId,new CopyOnWriteArrayList<>());
         }
         clientIdSubList.get(clientId).add(subscribeClient);
+        return true;
     }
 
     /**

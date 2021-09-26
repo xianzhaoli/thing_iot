@@ -2,6 +2,7 @@ package com.risky.server.MQTT.protocol;
 
 import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
+import com.risky.server.MQTT.message.MessageId;
 import com.risky.server.MQTT.message.MessageService;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -9,6 +10,7 @@ import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -64,18 +66,18 @@ public class Publish {
                     mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS0);
                     break;
                 case EXACTLY_ONCE:
-                    int messageIdQos2 = messageService.getMessageId(subscribeClient.getClientId());
+                    MessageId messageIdQos2 = messageService.getMessageId(subscribeClient.getClientId());
                     MqttPublishMessage mqttPublishMessageQOS2 = (MqttPublishMessage) MqttMessageFactory.newMessage(
                             new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.EXACTLY_ONCE,false,0)
-                            ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),messageIdQos2), Unpooled.buffer().writeBytes(payLoad)
+                            ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),messageIdQos2.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
                     );
                     mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS2);
                     break;
                 case AT_LEAST_ONCE:
-                    int messageIdQos1 = messageService.getMessageId(subscribeClient.getClientId());
+                    MessageId messageIdQos1 = messageService.getMessageId(subscribeClient.getClientId());
                     MqttPublishMessage mqttPublishMessageQOS1 = (MqttPublishMessage) MqttMessageFactory.newMessage(
                             new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_LEAST_ONCE,false,0)
-                            ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),messageIdQos1), Unpooled.buffer().writeBytes(payLoad)
+                            ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),messageIdQos1.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
                     );
                     mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS1);
                     break;

@@ -25,4 +25,16 @@ public class SubscribeClient {
 
     private String topic;
 
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        SubscribeClient that = (SubscribeClient) o;
+        return Objects.equals(clientId, that.clientId) &&
+                Objects.equals(topic, that.topic);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(clientId);
+    }
 }
