@@ -1,0 +1,142 @@
+package com.risky.server.MQTT.common;
+
+import cn.hutool.core.convert.impl.StringConverter;
+import cn.hutool.core.util.StrUtil;
+import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.protocol.Subscribe;
+import io.netty.channel.Channel;
+import io.netty.handler.codec.mqtt.MqttQoS;
+import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+
+/**
+ * @author ：xianzhaoli
+ * @date ：Created in 2021/9/24 下午10:12
+ * @description：保存客户端信息，订阅信息等
+ * @modified By：`
+ * @version: 1.0
+ */
+@Component
+public class MqttStoreService {
+
+    private Map<String, Channel> clientIDChannel = new ConcurrentHashMap<>(100);
+
+    private Map<Channel, String> channelClientID = new ConcurrentHashMap<>(100);
+
+    private Map<String, List<SubscribeClient>> subByTopic = new ConcurrentHashMap<>(50);
+
+    private Map<String, List<SubscribeClient>> clientIdSubList = new ConcurrentHashMap<>(50);
+
+    public void binding(String clientId, Channel channel){
+        if(clientIDChannel.containsKey(clientId)){
+            Channel oldChannel =  clientIDChannel.get(clientId);
+            boolean isOpen = oldChannel.isOpen();
+            if(isOpen & oldChannel.equals(channel)){
+                //已经绑定
+                return;
+            }
+            if(isOpen){
+                oldChannel.close();
+            }
+            channelClientID.remove(oldChannel);
+        }
+        clientIDChannel.put(clientId,channel);
+        channelClientID.put(channel,clientId);
+    }
+
+    public void unbinding(String clientID, Channel channel){
+        channelClientID.remove(channel);
+        clientIDChannel.remove(clientID);
+    }
+
+
+    public Channel getChannelByClientId(String clientId){
+        return clientIDChannel.get(clientId);
+    }
+
+
+    public void bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId){
+        if(!subByTopic.containsKey(topic)){
+            subByTopic.put(topic,new CopyOnWriteArrayList<>());
+        }
+        SubscribeClient subscribeClient = new SubscribeClient(mqttQoS,clientId,topic);
+        subByTopic.get(topic).add(subscribeClient);
+
+        /** 方便维护 **/
+        if(!clientIdSubList.containsKey(clientId)){
+            clientIdSubList.put(clientId,new CopyOnWriteArrayList<>());
+        }
+        clientIdSubList.get(clientId).add(subscribeClient);
+    }
+
+    /**
+     * 删除
+     * @param topic
+     * @param clientId
+     */
+    public void unbindSubscribeChannel(String topic,String clientId){
+        clientIdSubList.get(clientId).forEach(subscribeClient -> {
+            if(subscribeClient.getTopic().equals(topic) & subByTopic.containsKey(subscribeClient.getTopic())){
+                subByTopic.get(topic).remove(subscribeClient);
+                if(subByTopic.get(subscribeClient.getTopic()).size() == 0){
+                    subByTopic.remove(topic);
+                }
+            }
+        });
+        clientIdSubList.remove(clientId);
+    }
+
+    /**
+     * 获取已订阅的客户端
+     * @param topic 发送消息方的topic
+     * @return
+     */
+    public Set<SubscribeClient> filterChannel(String topic){
+        Map<String, List<SubscribeClient>> subscribeClients = subByTopic.entrySet().parallelStream()
+                .filter(key -> topic.equals(key.getKey()) | topicMatcher(topic,key.getKey()))
+                .collect(Collectors.toMap(p -> p.getKey(),p ->p.getValue()));
+        Set<SubscribeClient> set = new HashSet();
+        subscribeClients.forEach((k,v) ->{
+            set.addAll(v);
+        });
+        return set;
+    }
+
+    /**
+     * topic 匹配，发消息 topic 匹配到所有的channel
+     * @param sendTopic
+     * @param topicGroup
+     * @return
+     */
+    private boolean topicMatcher(String sendTopic,String topicGroup){
+        String[] sendArray = sendTopic.split("/");
+        String[] groupArray = topicGroup.split("/");
+        int sendLength = sendArray.length;
+        for (int i = 0; i < groupArray.length; i++) {
+            if(eqWell(groupArray[i])){
+                return true;
+            }
+            if(i > sendLength-1){
+                return false;
+            }
+
+            if(!groupArray[i].equals(sendArray[i]) & !eqPlus(groupArray[i])){
+                return false;
+            }
+        }
+        return groupArray.length == sendLength;
+    }
+
+    private boolean eqPlus(String str){
+        return "+".equals(str);
+    }
+
+    private boolean eqWell(String str){
+        return "#".equals(str);
+    }
+}
