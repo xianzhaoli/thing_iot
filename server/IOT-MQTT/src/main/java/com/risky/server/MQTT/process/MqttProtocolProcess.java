@@ -89,7 +89,7 @@ public class MqttProtocolProcess {
 
     public Subscribe subscribe(){
         if(subscribe == null){
-            subscribe = new Subscribe(mqttStoreService,systemTopic);
+            subscribe = new Subscribe(mqttStoreService,systemTopic,redisMessagePersistent,messageService);
         }
         return subscribe;
     }

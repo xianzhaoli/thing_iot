@@ -115,14 +115,14 @@ public class MessageService {
 
 
 
-    public void publishMessage(SubscribeClient subscribeClient,String topicName,byte[] payLoad){
+    public void publishMessage(SubscribeClient subscribeClient,String topicName,byte[] payLoad,Channel channel){
         switch (subscribeClient.getMqttQoS()) {
             case AT_MOST_ONCE: //QOS = 0
                 MqttPublishMessage mqttPublishMessageQOS0 = (MqttPublishMessage) MqttMessageFactory.newMessage(
                         new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_MOST_ONCE,false,0)
                         ,new MqttPublishVariableHeader(topicName,0), Unpooled.buffer().writeBytes(payLoad)
                 );
-                mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS0);
+                channel.writeAndFlush(mqttPublishMessageQOS0);
                 break;
             case EXACTLY_ONCE: //QOS = 2
                 MessageId messageIdQos2 = getMessageId(subscribeClient.getClientId());
@@ -130,7 +130,7 @@ public class MessageService {
                         new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.EXACTLY_ONCE,false,0)
                         ,new MqttPublishVariableHeader(topicName,messageIdQos2.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
                 );
-                mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS2);
+                channel.writeAndFlush(mqttPublishMessageQOS2);
                 break;
             case AT_LEAST_ONCE: //QOS = 1
                 MessageId messageIdQos1 = getMessageId(subscribeClient.getClientId());
@@ -138,7 +138,7 @@ public class MessageService {
                         new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_LEAST_ONCE,false,0)
                         ,new MqttPublishVariableHeader(topicName,messageIdQos1.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
                 );
-                mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS1);
+                channel.writeAndFlush(mqttPublishMessageQOS1);
                 redisMessagePersistent.putRetryMessage(subscribeClient.getClientId(),
                         new MessageRetry(payLoad,subscribeClient.getClientId(),topicName
                                 ,subscribeClient.getMqttQoS().value(),messageIdQos1.getMessageId()));

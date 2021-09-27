@@ -66,7 +66,13 @@ public class Publish {
         if(!subscribeClients.isEmpty()){
             subscribeClients.parallelStream().forEach(subscribeClient-> {
                 //消息等级由订阅方决定
-               messageService.publishMessage(subscribeClient,mqttPublishMessage.variableHeader().topicName(),payLoad);
+                Channel subscribeChannel = mqttStoreService.getChannelByClientId(subscribeClient.getClientId());
+                if(subscribeChannel != null){
+                    messageService.publishMessage(subscribeClient,mqttPublishMessage.variableHeader().topicName(),payLoad,subscribeChannel);
+                }else if(!subscribeClient.isCleanSession()){
+                    redisMessagePersistent.putCleanSessionMessage(subscribeClient.getClientId(),new MessageRetry(payLoad,subscribeClient.getClientId(),
+                                                                  mqttPublishMessage.variableHeader().topicName(),subscribeClient.getMqttQoS().value(),null));
+                }
             });
         }
     }

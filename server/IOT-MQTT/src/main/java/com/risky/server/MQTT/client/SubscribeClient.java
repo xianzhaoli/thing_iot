@@ -25,6 +25,8 @@ public class SubscribeClient {
 
     private String topic;
 
+    private boolean cleanSession;
+
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;

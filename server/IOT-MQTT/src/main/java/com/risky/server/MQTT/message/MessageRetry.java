@@ -2,6 +2,7 @@ package com.risky.server.MQTT.message;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.List;
  */
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class MessageRetry implements Serializable {
 
     private static final long serialVersionUID = 3496321435292942886L;
@@ -27,8 +29,7 @@ public class MessageRetry implements Serializable {
 
     private int Qos;
 
-    private int messageId;
-
+    private Integer messageId;
 
 
 }

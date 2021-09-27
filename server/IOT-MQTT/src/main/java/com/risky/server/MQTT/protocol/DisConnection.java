@@ -26,9 +26,12 @@ public class DisConnection {
     public void disConnectionProcess(Channel channel, MqttMessage mqttMessage){
         channel.close();
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
+        boolean cleanSession = (boolean) channel.attr(AttributeKey.valueOf("cleanSession")).get();
         mqttStoreService.unbinding(clientId,channel);
         log.info("客户端断开连接[{}],当前在线连接数{}",clientId,mqttStoreService.acitveChannlSize());
-        mqttStoreService.clearClientSubscribeTopic(clientId);
+        if(cleanSession){
+            mqttStoreService.clearClientSubscribeTopic(clientId);
+        }
     }
 
 }

@@ -25,8 +25,10 @@ public class Connection {
                 new MqttFixedHeader(MqttMessageType.CONNACK,false,MqttQoS.AT_MOST_ONCE,false,0)
                 ,new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED,true),null);
         channel.writeAndFlush(mqttConnAckMessage);
+        boolean cleanSession = mqttConnectMessage.variableHeader().isCleanSession();
         channel.attr(AttributeKey.valueOf("clientId")).set(mqttConnectMessage.payload().clientIdentifier());
         channel.attr(AttributeKey.valueOf("username")).set(mqttConnectMessage.payload().userName());
+        channel.attr(AttributeKey.valueOf("cleanSession")).set(cleanSession);
         mqttStoreService.binding(mqttConnectMessage.payload().clientIdentifier(),channel);
     }
 

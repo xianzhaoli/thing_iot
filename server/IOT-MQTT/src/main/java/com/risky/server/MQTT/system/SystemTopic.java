@@ -2,6 +2,7 @@ package com.risky.server.MQTT.system;
 
 import cn.hutool.core.util.StrUtil;
 import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.protocol.Subscribe;
 import io.netty.channel.Channel;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,13 +33,17 @@ public class SystemTopic {
         systemBorders.add(SYS_TIMESTAMP);
     }
 
-    @Autowired
+    @Resource
     private MessageService messageService;
 
+    @Resource
+    private MqttStoreService mqttStoreService;
+
     public void sendSysInfo(SubscribeClient subscribeClient){
+        Channel channel = mqttStoreService.getChannelByClientId(subscribeClient.getClientId());
         switch (subscribeClient.getTopic()){
             case SYS_VERSION:
-                messageService.publishMessage(subscribeClient,subscribeClient.getTopic(), StrUtil.bytes(version));
+                messageService.publishMessage(subscribeClient,subscribeClient.getTopic(), StrUtil.bytes(version),channel);
                 break;
             default:
                 break;

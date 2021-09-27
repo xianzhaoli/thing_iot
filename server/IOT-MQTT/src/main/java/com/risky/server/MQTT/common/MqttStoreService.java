@@ -1,9 +1,6 @@
 package com.risky.server.MQTT.common;
 
-import cn.hutool.core.convert.impl.StringConverter;
-import cn.hutool.core.util.StrUtil;
 import com.risky.server.MQTT.client.SubscribeClient;
-import com.risky.server.MQTT.protocol.Subscribe;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +30,7 @@ public class MqttStoreService {
     private Map<String, List<SubscribeClient>> subByTopic = new ConcurrentHashMap<>(50);
 
     private Map<String, List<SubscribeClient>> clientIdSubList = new ConcurrentHashMap<>(50);
+
 
     /**
      * 当前的客户端数
@@ -80,11 +78,11 @@ public class MqttStoreService {
     }
 
 
-    public SubscribeClient bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId){
+    public SubscribeClient bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId,boolean cleanSession){
         if(!subByTopic.containsKey(topic)){
             subByTopic.put(topic,new CopyOnWriteArrayList<>());
         }
-        SubscribeClient subscribeClient = new SubscribeClient(mqttQoS,clientId,topic);
+        SubscribeClient subscribeClient = new SubscribeClient(mqttQoS,clientId,topic,cleanSession);
         if(subByTopic.get(topic).contains(subscribeClient)){
             return null;
         }
