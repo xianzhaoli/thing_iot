@@ -19,8 +19,13 @@ public class RedisMessagePersistent {
     @Autowired
     private RedisTemplate redisTemplate;
 
+    private final static String retryPublishMessageKey = "MQTT:RETRY:PUBLISH:";
 
+    public void putRetryMessage(String clientId,MessageRetry messageRetry){
+        redisTemplate.opsForHash().put(clientId,String.valueOf(messageRetry.getMessageId()),messageRetry); //放入消息
+    }
 
-
-
+    public void removeRetryMessage(String clientId,Integer messageId){
+        redisTemplate.opsForHash().delete(clientId,messageId.toString());
+    }
 }

@@ -6,11 +6,12 @@ spring:
       key-prefix: MQTT
   redis:
     port: 6379
-    url: 127.0.0.1:6379
-    host: 127.0.0.1
+    url: 192.168.1.199:6379
+    host: 192.168.1.199
     password:
     jedis:
       pool:
         max-idle: 32
         max-active: 64
         max-wait: 2000ms
+    database: 3

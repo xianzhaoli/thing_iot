@@ -37,4 +37,9 @@ public class SubscribeClient {
     public int hashCode() {
         return Objects.hash(clientId);
     }
+
+    public SubscribeClient(String clientId, String topic) {
+        this.clientId = clientId;
+        this.topic = topic;
+    }
 }

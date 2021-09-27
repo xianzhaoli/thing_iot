@@ -3,6 +3,7 @@ package com.risky.server.MQTT.message;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.Objects;
 
 /**
@@ -14,7 +15,7 @@ import java.util.Objects;
  */
 @Data
 @AllArgsConstructor
-public class MessageId {
+public class MessageId implements Serializable {
 
     private int messageId;
 

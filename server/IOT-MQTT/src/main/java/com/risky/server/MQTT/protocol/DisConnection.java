@@ -4,6 +4,7 @@ import com.risky.server.MQTT.common.MqttStoreService;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.util.AttributeKey;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author ：xianzhaoli
@@ -12,6 +13,7 @@ import io.netty.util.AttributeKey;
  * @modified By：`
  * @version: 1.0
  */
+@Slf4j
 public class DisConnection {
 
     private MqttStoreService mqttStoreService;
@@ -25,9 +27,8 @@ public class DisConnection {
         channel.close();
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
         mqttStoreService.unbinding(clientId,channel);
+        log.info("客户端断开连接[{}],当前在线连接数{}",clientId,mqttStoreService.acitveChannlSize());
+        mqttStoreService.clearClientSubscribeTopic(clientId);
     }
-
-
-
 
 }

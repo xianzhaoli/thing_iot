@@ -27,9 +27,6 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
     private MqttProtocolProcess mqttProtocolProcess;
 
-
-
-
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) {
 

@@ -21,7 +21,6 @@ public class Connection {
     }
 
     public void sendConnAckMessage(Channel channel , MqttConnectMessage mqttConnectMessage){
-
         MqttConnAckMessage mqttConnAckMessage = (MqttConnAckMessage) MqttMessageFactory.newMessage(
                 new MqttFixedHeader(MqttMessageType.CONNACK,false,MqttQoS.AT_MOST_ONCE,false,0)
                 ,new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED,true),null);

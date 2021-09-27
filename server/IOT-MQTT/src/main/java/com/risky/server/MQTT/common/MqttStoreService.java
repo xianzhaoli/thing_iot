@@ -6,6 +6,7 @@ import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.protocol.Subscribe;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
  * @version: 1.0
  */
 @Component
+@Slf4j
 public class MqttStoreService {
 
     private Map<String, Channel> clientIDChannel = new ConcurrentHashMap<>(100);
@@ -32,6 +34,14 @@ public class MqttStoreService {
 
     private Map<String, List<SubscribeClient>> clientIdSubList = new ConcurrentHashMap<>(50);
 
+    /**
+     * 当前的客户端数
+     * @return
+     */
+    public Integer acitveChannlSize(){
+        return channelClientID.size();
+    }
+
     public void binding(String clientId, Channel channel){
         if(clientIDChannel.containsKey(clientId)){
             Channel oldChannel =  clientIDChannel.get(clientId);
@@ -41,6 +51,7 @@ public class MqttStoreService {
                 //在一个网络连接上，客户端只能发送一次CONNECT报文。
                 //服务端必须将客户端发送的第二个CONNECT报文当作协议违规处理并断开客户端的连接。
                 if(oldChannel != null & oldChannel.equals(channel)){
+                    log.info("客户端发送两次connection报文，断开连接{}",clientId);
                     channel.close();
                     unbinding(clientId,channel);
                     return;
@@ -48,16 +59,19 @@ public class MqttStoreService {
             }
             if(isOpen){
                 oldChannel.close();
+                log.info("同一个clientID被两个客户端使用，断开旧连接{}",clientId);
             }
             channelClientID.remove(oldChannel);
         }
         clientIDChannel.put(clientId,channel);
         channelClientID.put(channel,clientId);
+        log.info("新的客户端连接[{}],当前在线连接数{}",clientId,clientIDChannel.size());
     }
 
     public void unbinding(String clientID, Channel channel){
         channelClientID.remove(channel);
         clientIDChannel.remove(clientID);
+
     }
 
 
@@ -93,12 +107,15 @@ public class MqttStoreService {
         clientIdSubList.get(clientId).forEach(subscribeClient -> {
             if(subscribeClient.getTopic().equals(topic) & subByTopic.containsKey(subscribeClient.getTopic())){
                 subByTopic.get(topic).remove(subscribeClient);
+                clientIdSubList.get(clientId).remove(subscribeClient);
                 if(subByTopic.get(subscribeClient.getTopic()).size() == 0){
                     subByTopic.remove(topic);
                 }
             }
         });
-        clientIdSubList.remove(clientId);
+        if(clientIdSubList.get(clientId).size() == 0){
+            clientIdSubList.remove(clientId);
+        }
     }
 
     /**
@@ -148,5 +165,16 @@ public class MqttStoreService {
 
     private boolean eqWell(String str){
         return "#".equals(str);
+    }
+
+
+    public void clearClientSubscribeTopic(String clientId){
+        if(clientIdSubList.containsKey(clientId)){
+            clientIdSubList.get(clientId).parallelStream().forEach(subscribeClient -> {
+                subByTopic.get(subscribeClient.getTopic()).remove(subscribeClient);
+                log.info("清除客户端:{},订阅的topic:{}",clientId,subscribeClient.getTopic());
+            });
+            clientIdSubList.remove(clientId);
+        }
     }
 }
