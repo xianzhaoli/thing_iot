@@ -4,6 +4,7 @@ import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
 import com.risky.server.MQTT.protocol.*;
+import com.risky.server.MQTT.system.SystemTopic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,10 @@ public class MqttProtocolProcess {
 
     private PubAck pubAck;
 
+    private PubRec pubRec;
+
+    private PubComp pubComp;
+
     @Resource
     private MqttStoreService mqttStoreService;
 
@@ -43,6 +48,9 @@ public class MqttProtocolProcess {
 
     @Resource
     private RedisMessagePersistent redisMessagePersistent;
+
+    @Resource
+    private SystemTopic systemTopic;
 
     public Connection connection(){
         if(connection == null){
@@ -81,7 +89,7 @@ public class MqttProtocolProcess {
 
     public Subscribe subscribe(){
         if(subscribe == null){
-            subscribe = new Subscribe(mqttStoreService);
+            subscribe = new Subscribe(mqttStoreService,systemTopic);
         }
         return subscribe;
     }
@@ -99,4 +107,22 @@ public class MqttProtocolProcess {
         }
         return pubAck;
     }
+
+    public PubRec pubRec(){
+        if(pubRec == null){
+            pubRec = new PubRec(mqttStoreService,messageService,redisMessagePersistent);
+        }
+        return pubRec;
+    }
+
+    public PubComp pubComp(){
+        if(pubComp == null){
+            pubComp = new PubComp(mqttStoreService,messageService,redisMessagePersistent);
+        }
+        return pubComp;
+    }
+
+
+
+
 }

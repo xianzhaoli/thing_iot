@@ -21,7 +21,7 @@ public class PubRel {
     }
 
     /**
-     * OQS = 3 回复消息
+     * OQS = 2 回复消息
      * @param channel
      * @param mqttMessageIdVariableHeader
      */

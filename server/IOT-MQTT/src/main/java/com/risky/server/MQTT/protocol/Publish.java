@@ -64,45 +64,11 @@ public class Publish {
         //发送消息
         Set<SubscribeClient> subscribeClients = mqttStoreService.filterChannel(mqttPublishMessage.variableHeader().topicName());
         if(!subscribeClients.isEmpty()){
-            List<MessageId> messageIds = new ArrayList<>();
             subscribeClients.parallelStream().forEach(subscribeClient-> {
                 //消息等级由订阅方决定
-                switch (subscribeClient.getMqttQoS()) {
-                    case AT_MOST_ONCE: //QOS = 0
-                        MqttPublishMessage mqttPublishMessageQOS0 = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                                new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_MOST_ONCE,false,0)
-                                ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),0), Unpooled.buffer().writeBytes(payLoad)
-                        );
-                        mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS0);
-                        break;
-                    case EXACTLY_ONCE: //QOS = 2
-                        MessageId messageIdQos2 = messageService.getMessageId(subscribeClient.getClientId());
-                        MqttPublishMessage mqttPublishMessageQOS2 = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                                new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.EXACTLY_ONCE,false,0)
-                                ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),messageIdQos2.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
-                        );
-                        mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS2);
-                        break;
-                    case AT_LEAST_ONCE: //QOS = 1
-                        MessageId messageIdQos1 = messageService.getMessageId(subscribeClient.getClientId());
-                        MqttPublishMessage mqttPublishMessageQOS1 = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                                new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_LEAST_ONCE,false,0)
-                                ,new MqttPublishVariableHeader(mqttPublishMessage.variableHeader().topicName(),messageIdQos1.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
-                        );
-                        mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS1);
-                        redisMessagePersistent.putRetryMessage(subscribeClient.getClientId(),
-                                new MessageRetry(payLoad,subscribeClient.getClientId(),mqttPublishMessage.variableHeader().topicName()
-                                         ,subscribeClient.getMqttQoS().value(),messageIdQos1.getMessageId()));
-                        break;
-                    default:
-                        break;
-                }
+               messageService.publishMessage(subscribeClient,mqttPublishMessage.variableHeader().topicName(),payLoad);
             });
-            if(!messageIds.isEmpty()){
-
-            }
         }
-
     }
 
 

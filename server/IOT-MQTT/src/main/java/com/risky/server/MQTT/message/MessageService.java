@@ -1,6 +1,12 @@
 package com.risky.server.MQTT.message;
 
+import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.MqttStoreService;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
+import io.netty.handler.codec.mqtt.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -27,6 +33,12 @@ public class MessageService {
     private Map<String, List<MessageId>> lockedMessageId = new ConcurrentHashMap<>(1000);
 
     private Map<String,Integer> clientTopicMessageId = new ConcurrentHashMap<>(1000);
+
+    @Autowired
+    private MqttStoreService mqttStoreService;
+
+    @Autowired
+    private RedisMessagePersistent redisMessagePersistent;
 
     public MessageId getMessageId(final String clientId){
         long start = System.currentTimeMillis();
@@ -100,5 +112,41 @@ public class MessageService {
         lockedMessageId.get(key).remove(messageId);
         log.info("释放了messageId{}",messageId);
     }
+
+
+
+    public void publishMessage(SubscribeClient subscribeClient,String topicName,byte[] payLoad){
+        switch (subscribeClient.getMqttQoS()) {
+            case AT_MOST_ONCE: //QOS = 0
+                MqttPublishMessage mqttPublishMessageQOS0 = (MqttPublishMessage) MqttMessageFactory.newMessage(
+                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_MOST_ONCE,false,0)
+                        ,new MqttPublishVariableHeader(topicName,0), Unpooled.buffer().writeBytes(payLoad)
+                );
+                mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS0);
+                break;
+            case EXACTLY_ONCE: //QOS = 2
+                MessageId messageIdQos2 = getMessageId(subscribeClient.getClientId());
+                MqttPublishMessage mqttPublishMessageQOS2 = (MqttPublishMessage) MqttMessageFactory.newMessage(
+                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.EXACTLY_ONCE,false,0)
+                        ,new MqttPublishVariableHeader(topicName,messageIdQos2.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
+                );
+                mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS2);
+                break;
+            case AT_LEAST_ONCE: //QOS = 1
+                MessageId messageIdQos1 = getMessageId(subscribeClient.getClientId());
+                MqttPublishMessage mqttPublishMessageQOS1 = (MqttPublishMessage) MqttMessageFactory.newMessage(
+                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_LEAST_ONCE,false,0)
+                        ,new MqttPublishVariableHeader(topicName,messageIdQos1.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
+                );
+                mqttStoreService.getChannelByClientId(subscribeClient.getClientId()).writeAndFlush(mqttPublishMessageQOS1);
+                redisMessagePersistent.putRetryMessage(subscribeClient.getClientId(),
+                        new MessageRetry(payLoad,subscribeClient.getClientId(),topicName
+                                ,subscribeClient.getMqttQoS().value(),messageIdQos1.getMessageId()));
+                break;
+            default:
+                break;
+        }
+    }
+
 
 }

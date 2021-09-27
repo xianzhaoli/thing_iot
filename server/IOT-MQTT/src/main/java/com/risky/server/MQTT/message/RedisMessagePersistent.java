@@ -19,13 +19,34 @@ public class RedisMessagePersistent {
     @Autowired
     private RedisTemplate redisTemplate;
 
-    private final static String retryPublishMessageKey = "MQTT:RETRY:PUBLISH:";
+    private final static String retryPublishMessageKey_PUBLISH = "MQTT:RETRY:PUBLISH:"; //QOS = 1
 
+    private final static String retryPublishMessageKey_PUBREL = "MQTT:RETRY:PUBREL:"; //QOS = 2
+
+    /**
+     * QOS = 1
+     * @param clientId
+     * @param messageRetry
+     */
     public void putRetryMessage(String clientId,MessageRetry messageRetry){
-        redisTemplate.opsForHash().put(clientId,String.valueOf(messageRetry.getMessageId()),messageRetry); //放入消息
+        redisTemplate.opsForHash().put(retryPublishMessageKey_PUBLISH + clientId,String.valueOf(messageRetry.getMessageId()),messageRetry); //放入消息
     }
 
+    /**
+     * OQS = 1
+     * @param clientId
+     * @param messageId
+     */
     public void removeRetryMessage(String clientId,Integer messageId){
-        redisTemplate.opsForHash().delete(clientId,messageId.toString());
+        redisTemplate.opsForHash().delete(retryPublishMessageKey_PUBLISH + clientId,messageId.toString());
+    }
+
+    public void putPubRelMessage(String clientId,MessageId messageId){
+        redisTemplate.opsForHash().put(retryPublishMessageKey_PUBREL + clientId,String.valueOf(messageId.getMessageId()),messageId); //放入消息
+    }
+
+
+    public void removePubRelMessage(String clientId,Integer messageId){
+        redisTemplate.opsForHash().delete(retryPublishMessageKey_PUBREL + clientId,String.valueOf(messageId)); //放入消息
     }
 }

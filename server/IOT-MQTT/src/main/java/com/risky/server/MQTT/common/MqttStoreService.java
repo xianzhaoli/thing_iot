@@ -80,13 +80,13 @@ public class MqttStoreService {
     }
 
 
-    public boolean bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId){
+    public SubscribeClient bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId){
         if(!subByTopic.containsKey(topic)){
             subByTopic.put(topic,new CopyOnWriteArrayList<>());
         }
         SubscribeClient subscribeClient = new SubscribeClient(mqttQoS,clientId,topic);
         if(subByTopic.get(topic).contains(subscribeClient)){
-            return false;
+            return null;
         }
         subByTopic.get(topic).add(subscribeClient);
 
@@ -95,7 +95,7 @@ public class MqttStoreService {
             clientIdSubList.put(clientId,new CopyOnWriteArrayList<>());
         }
         clientIdSubList.get(clientId).add(subscribeClient);
-        return true;
+        return subscribeClient;
     }
 
     /**

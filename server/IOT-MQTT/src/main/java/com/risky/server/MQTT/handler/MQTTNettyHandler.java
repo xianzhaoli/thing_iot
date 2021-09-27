@@ -47,6 +47,7 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
                     break;
                 case PUBREC:
                     System.out.println("PUBREC ------");
+                    mqttProtocolProcess.pubRec().processPubRec(channel, (MqttMessageIdVariableHeader) msg.variableHeader());
                     break;
                 case PUBACK:
                     System.out.println("PUBACK ------");
@@ -64,6 +65,7 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
                     break;
                 case PUBCOMP:
                     System.out.println("PUBCOMP ------");
+                    mqttProtocolProcess.pubComp().processPubComp(channel, (MqttMessageIdVariableHeader) msg.variableHeader());
                     break;
                 case DISCONNECT:
                     mqttProtocolProcess.disConnection().disConnectionProcess(channel,msg);
