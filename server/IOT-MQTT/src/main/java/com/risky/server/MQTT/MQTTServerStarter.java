@@ -15,6 +15,7 @@ import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
@@ -39,6 +40,9 @@ public class MQTTServerStarter {
     @Resource
     private MqttProtocolProcess mqttProtocolProcess;
 
+    @Value("${iot-server.port:1883}")
+    private int port;
+
     public static void main(String[] args) {
         SpringApplication.run(MQTTServerStarter.class,args);
     }
@@ -61,7 +65,7 @@ public class MQTTServerStarter {
                             p.addLast(mqttNettyHandler);
                         }
                     });
-            ChannelFuture f = bootstrap.bind(1883).sync();
+            ChannelFuture f = bootstrap.bind(port).sync();
             f.channel().closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();

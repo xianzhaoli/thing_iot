@@ -31,5 +31,14 @@ public class MessageRetry implements Serializable {
 
     private Integer messageId;
 
+    private long timestamp;
 
+    public MessageRetry(byte[] payload, String clientId, String topic, int qos, Integer messageId) {
+        this.payload = payload;
+        this.clientId = clientId;
+        this.topic = topic;
+        Qos = qos;
+        this.messageId = messageId;
+        this.timestamp = System.currentTimeMillis();
+    }
 }

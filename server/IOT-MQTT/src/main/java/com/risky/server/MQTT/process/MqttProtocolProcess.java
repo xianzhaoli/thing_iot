@@ -3,6 +3,7 @@ package com.risky.server.MQTT.process;
 import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
+import com.risky.server.MQTT.message.RetainMessage;
 import com.risky.server.MQTT.protocol.*;
 import com.risky.server.MQTT.system.SystemTopic;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,16 +42,19 @@ public class MqttProtocolProcess {
     private PubComp pubComp;
 
     @Resource
-    private MqttStoreService mqttStoreService;
+    public MqttStoreService mqttStoreService;
 
     @Resource
-    private MessageService messageService;
+    public MessageService messageService;
 
     @Resource
     private RedisMessagePersistent redisMessagePersistent;
 
     @Resource
     private SystemTopic systemTopic;
+
+    @Resource
+    private RetainMessage retainMessage;
 
     public Connection connection(){
         if(connection == null){
@@ -82,14 +86,14 @@ public class MqttProtocolProcess {
 
     public Publish publish(){
         if(publish == null){
-            publish = new Publish(mqttStoreService,messageService,redisMessagePersistent);
+            publish = new Publish(mqttStoreService,messageService,redisMessagePersistent,retainMessage);
         }
         return publish;
     }
 
     public Subscribe subscribe(){
         if(subscribe == null){
-            subscribe = new Subscribe(mqttStoreService,systemTopic,redisMessagePersistent,messageService);
+            subscribe = new Subscribe(mqttStoreService,systemTopic,redisMessagePersistent,messageService,retainMessage);
         }
         return subscribe;
     }

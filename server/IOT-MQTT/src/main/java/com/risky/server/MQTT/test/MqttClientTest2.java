@@ -1,0 +1,49 @@
+package com.risky.server.MQTT.test;
+
+import lombok.SneakyThrows;
+import org.eclipse.paho.client.mqttv3.MqttClient;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+public class MqttClientTest2 {
+
+
+    private static MqttConnectOptions connOpts = new MqttConnectOptions();
+
+    private static MemoryPersistence persistence = new MemoryPersistence();
+
+    static {
+        connOpts.setCleanSession(true);
+    }
+
+    private static final ThreadPoolExecutor THREADPOOL = new ThreadPoolExecutor(96, 128, 6,
+            TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(1000),
+            new ThreadPoolExecutor.DiscardOldestPolicy());
+
+    public static void main(String[] args)  {
+
+        for (int i = 0; i < 10 ; i++) {
+            int finalI = i;
+            THREADPOOL.execute(new Runnable() {
+                @SneakyThrows
+                @Override
+                public void run() {
+                    for (int j = 0; j < 50 ; j++) {
+                        MqttClient mqttClient = new MqttClient("tcp://127.0.0.1:1883", UUID.randomUUID().toString() + System.currentTimeMillis() + finalI,persistence);
+                        mqttClient.setCallback(new MQTTOnMessageCallback());
+                        mqttClient.connect(connOpts);
+                        connOpts.setKeepAliveInterval(120);
+                        Thread.sleep(1);
+                        mqttClient.subscribe("aa/+",2);
+                    }
+                }
+            });
+
+        }
+    }
+}

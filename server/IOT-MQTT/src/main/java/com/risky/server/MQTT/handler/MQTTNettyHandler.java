@@ -1,5 +1,7 @@
 package com.risky.server.MQTT.handler;
 
+import cn.hutool.core.util.StrUtil;
+import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.process.MqttProtocolProcess;
 import io.netty.buffer.ByteBuf;
@@ -7,13 +9,20 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.mqtt.*;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
 import javafx.scene.layout.BackgroundRepeat;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.extern.slf4j.XSlf4j;
+import org.apache.commons.lang3.StringUtils;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.sql.Struct;
+import java.util.Set;
 
 /**
  * @author ：xianzhaoli
@@ -23,12 +32,16 @@ import java.io.UnsupportedEncodingException;
  * @version: 1.0
  */
 @AllArgsConstructor
+@Slf4j
 public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
+
 
     private MqttProtocolProcess mqttProtocolProcess;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) {
+
+        long start = System.currentTimeMillis();
 
         Channel channel = ctx.channel();
 
@@ -82,7 +95,68 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
         }else{
             ctx.channel().close();
         }
-
+        long e = System.currentTimeMillis();
+        log.info("处理耗时 ----> {}ms",e-start);
     }
 
+
+
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        super.channelActive(ctx);
+        Channel channel = ctx.channel();
+        if (channel.pipeline().names().contains("idleState")){
+            channel.pipeline().remove("idleState");
+        }
+        //120秒不发送连接信息，就kill掉
+        channel.pipeline().addFirst("idleState",new IdleStateHandler(0, 0, 120));
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        super.channelInactive(ctx);
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        if (cause instanceof IOException) {
+            // 远程主机强迫关闭了一个现有的连接的异常
+            String clientId = (String) ctx.channel().attr(AttributeKey.valueOf("clientId")).get();
+            mqttProtocolProcess.disConnection().disConnectionProcess(ctx.channel(), null);
+            ctx.close();
+            log.info("异常关闭连接----->");
+        } else {
+            super.exceptionCaught(ctx, cause);
+        }
+    }
+
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        Channel channel = ctx.channel();
+        String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
+        if (evt instanceof IdleStateEvent) {
+            IdleStateEvent idleStateEvent = (IdleStateEvent) evt;
+            if (idleStateEvent.state() == IdleState.ALL_IDLE) {
+                MqttPublishMessage willMessage = (MqttPublishMessage) channel.attr(AttributeKey.valueOf("willMessage")).get();
+
+                if(StringUtils.isNotBlank(clientId) && willMessage != null) {
+                    ByteBuf byteBuf = willMessage.payload();
+                    byte[] payLoad = new byte[byteBuf.readableBytes()];
+                    int index = byteBuf.readerIndex();
+                    byteBuf.getBytes(index,payLoad);
+                    String topic = willMessage.variableHeader().topicName();
+                    Set<SubscribeClient> subscribeClients = mqttProtocolProcess.mqttStoreService.filterChannel(topic);
+                    subscribeClients.parallelStream().forEach(subscribeClient -> {
+                        Channel channel1 = mqttProtocolProcess.mqttStoreService.getChannelByClientId(subscribeClient.getClientId());
+                        if(channel1 != null & channel1.isActive()){
+                            mqttProtocolProcess.messageService.publishMessage(subscribeClient,topic,payLoad,channel1);
+                        }
+                    });
+                }
+                channel.close();
+            }
+        } else {
+            super.userEventTriggered(ctx, evt);
+        }
+    }
 }

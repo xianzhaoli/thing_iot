@@ -6,7 +6,7 @@ spring:
       key-prefix: MQTT
   redis:
     port: 6379
-    host: 192.168.1.199
+    host: 192.168.1.104
     password:
     jedis:
       pool:
@@ -14,6 +14,10 @@ spring:
         max-active: 64
         max-wait: 2000ms
     database: 3
-
 iot-server:
+  port: 1883
   version: BQ-KS
+logging:
+  file:
+    path:
+    name: D:\data\log\iot-mqtt-server.log

@@ -3,10 +3,7 @@ package com.risky.server.MQTT.protocol;
 import cn.hutool.core.util.StrUtil;
 import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
-import com.risky.server.MQTT.message.MessageId;
-import com.risky.server.MQTT.message.MessageRetry;
-import com.risky.server.MQTT.message.MessageService;
-import com.risky.server.MQTT.message.RedisMessagePersistent;
+import com.risky.server.MQTT.message.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -36,10 +33,13 @@ public class Publish {
 
     private RedisMessagePersistent redisMessagePersistent;
 
-    public Publish(MqttStoreService mqttStoreService, MessageService messageService, RedisMessagePersistent redisMessagePersistent) {
+    private RetainMessage retainMessage;
+
+    public Publish(MqttStoreService mqttStoreService, MessageService messageService, RedisMessagePersistent redisMessagePersistent, RetainMessage retainMessage) {
         this.mqttStoreService = mqttStoreService;
         this.messageService = messageService;
         this.redisMessagePersistent = redisMessagePersistent;
+        this.retainMessage = retainMessage;
     }
 
     public void sendPublishMessage(Channel channel, MqttPublishMessage mqttPublishMessage){
@@ -61,6 +61,13 @@ public class Publish {
             default:
                 break;
         }
+
+        //保留消息
+        if(mqttPublishMessage.fixedHeader().isRetain()){
+            retainMessage.putRetainMessage(mqttPublishMessage.variableHeader().topicName(),
+                    new MessageRetry(payLoad,clientId,mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel().value(),null));
+        }
+
         //发送消息
         Set<SubscribeClient> subscribeClients = mqttStoreService.filterChannel(mqttPublishMessage.variableHeader().topicName());
         if(!subscribeClients.isEmpty()){

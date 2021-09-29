@@ -138,7 +138,7 @@ public class MqttStoreService {
      * @param topicGroup
      * @return
      */
-    private boolean topicMatcher(String sendTopic,String topicGroup){
+    public boolean topicMatcher(String sendTopic,String topicGroup){
         String[] sendArray = sendTopic.split("/");
         String[] groupArray = topicGroup.split("/");
         int sendLength = sendArray.length;

@@ -5,6 +5,7 @@ import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.message.MessageRetry;
 import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
+import com.risky.server.MQTT.message.RetainMessage;
 import com.risky.server.MQTT.system.SystemTopic;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
@@ -34,11 +35,14 @@ public class Subscribe {
 
     private MessageService messageService;
 
-    public Subscribe(MqttStoreService mqttStoreService, SystemTopic systemTopic, RedisMessagePersistent redisMessagePersistent, MessageService messageService) {
+    private RetainMessage retainMessage;
+
+    public Subscribe(MqttStoreService mqttStoreService, SystemTopic systemTopic, RedisMessagePersistent redisMessagePersistent, MessageService messageService, RetainMessage retainMessage) {
         this.mqttStoreService = mqttStoreService;
         this.systemTopic = systemTopic;
         this.redisMessagePersistent = redisMessagePersistent;
         this.messageService = messageService;
+        this.retainMessage = retainMessage;
     }
 
     public void sendSubscribeMessage(Channel channel, MqttSubscribeMessage mqttSubscribeMessage){
@@ -77,6 +81,13 @@ public class Subscribe {
                                 -> messageService.publishMessage(subscribeClient,messageRetry.getTopic(),messageRetry.getPayload(),channel)
                         );
                     }
+
+                    //topic 的保留消息
+                    List<String> key = retainMessage.matcherRetainMessage(subscribeClient.getTopic());
+                    key.parallelStream().forEach(topic -> {
+                        MessageRetry messageRetry = retainMessage.getRetainMessage(topic);
+                        messageService.publishMessage(subscribeClient,messageRetry.getTopic(),messageRetry.getPayload(),channel);
+                    });
                 }
             });
         }
