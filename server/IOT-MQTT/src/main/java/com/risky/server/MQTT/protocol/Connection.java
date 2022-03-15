@@ -1,5 +1,7 @@
 package com.risky.server.MQTT.protocol;
 
+import com.risky.server.MQTT.client.ConnectClient;
+import com.risky.server.MQTT.client.WillMessage;
 import com.risky.server.MQTT.common.MqttStoreService;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -28,10 +30,27 @@ public class Connection {
                 ,new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED,true),null);
         channel.writeAndFlush(mqttConnAckMessage);
         boolean cleanSession = mqttConnectMessage.variableHeader().isCleanSession();
-        channel.attr(AttributeKey.valueOf("clientId")).set(mqttConnectMessage.payload().clientIdentifier());
-        channel.attr(AttributeKey.valueOf("username")).set(mqttConnectMessage.payload().userName());
-        channel.attr(AttributeKey.valueOf("cleanSession")).set(cleanSession);
+        int keepAliveSeconds = mqttConnectMessage.variableHeader().keepAliveTimeSeconds();
+        channel.attr(AttributeKey.valueOf("clientId")).set(mqttConnectMessage.payload().clientIdentifier()); //连接clientId
+        channel.attr(AttributeKey.valueOf("username")).set(mqttConnectMessage.payload().userName()); //连接用户名
+        channel.attr(AttributeKey.valueOf("cleanSession")).set(cleanSession); //是否清除会话
+        channel.attr(AttributeKey.valueOf("keepAliveSeconds")).set(keepAliveSeconds); //心跳间隔时长
 
+        WillMessage willMessage1 = null;
+        if(mqttConnectMessage.variableHeader().isWillFlag()){
+            willMessage1 = new WillMessage(mqttConnectMessage.variableHeader().willQos(),mqttConnectMessage.payload().willTopic(),
+                    mqttConnectMessage.payload().willMessageInBytes(),mqttConnectMessage.variableHeader().isWillRetain());
+        }
+
+        ConnectClient connectClient = ConnectClient.builder()
+                .clientId(mqttConnectMessage.payload().clientIdentifier())
+                .cleanSession(cleanSession)
+                .password(mqttConnectMessage.payload().passwordInBytes())
+                .username(mqttConnectMessage.payload().userName())
+                .willFlag(mqttConnectMessage.variableHeader().isWillFlag())
+                .willMessage(willMessage1)
+                .build();
+        mqttStoreService.mqttConnectionClientCache.add(connectClient.getClientId(),connectClient);
         //处理遗嘱信息
         if (mqttConnectMessage.variableHeader().isWillFlag()){
             MqttPublishMessage willMessage = (MqttPublishMessage) MqttMessageFactory.newMessage(

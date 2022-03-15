@@ -1,9 +1,16 @@
 package com.risky.server.MQTT.common;
 
 import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.cache.redis.connection.MqttConnectionClientCache;
+import com.risky.server.MQTT.common.cache.redis.publish.MqttPublishCache;
+import com.risky.server.MQTT.common.cache.redis.subscribe.MqttClientScribeCache;
+import com.risky.server.MQTT.common.cache.redis.subscribe.MqttSubScribeCache;
+import com.risky.server.MQTT.common.thread.AsyncWorkerPool;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.paho.client.mqttv3.internal.wire.MqttConnect;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -31,6 +38,20 @@ public class MqttStoreService {
 
     private Map<String, List<SubscribeClient>> clientIdSubList = new ConcurrentHashMap<>(50);
 
+    @Autowired
+    public MqttSubScribeCache mqttSubScribeCache;
+
+    @Autowired
+    public MqttConnectionClientCache mqttConnectionClientCache;
+
+    @Autowired
+    public MqttClientScribeCache mqttClientScribeCache;
+
+    @Autowired
+    public MqttPublishCache mqttPublishCache;
+
+    @Autowired
+    public AsyncWorkerPool asyncWorkerPool;
 
     /**
      * 当前的客户端数
@@ -69,7 +90,6 @@ public class MqttStoreService {
     public void unbinding(String clientID, Channel channel){
         channelClientID.remove(channel);
         clientIDChannel.remove(clientID);
-
     }
 
 

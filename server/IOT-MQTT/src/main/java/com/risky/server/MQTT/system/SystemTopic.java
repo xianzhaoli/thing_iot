@@ -4,9 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.message.MessageService;
-import com.risky.server.MQTT.protocol.Subscribe;
 import io.netty.channel.Channel;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 

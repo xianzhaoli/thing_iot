@@ -2,6 +2,7 @@ package com.risky.server.MQTT.protocol;
 
 import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
+import com.risky.server.MQTT.common.cache.redis.Topic;
 import com.risky.server.MQTT.message.MessageRetry;
 import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
@@ -51,14 +52,14 @@ public class Subscribe {
         List<SubscribeClient> subscribeClients = new ArrayList<>();
 
         mqttSubscribeMessage.payload().topicSubscriptions().forEach(mqttTopicSubscription -> {
-            SubscribeClient subscribeClient = mqttStoreService.bindSubscribeChannel(mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos()
-                    ,clientId, (Boolean) channel.attr(AttributeKey.valueOf("cleanSession")).get());
-            if(subscribeClient != null){
+            Topic topic = new Topic(mqttTopicSubscription.topicName(),clientId,mqttTopicSubscription.qualityOfService());
+            if(!mqttStoreService.mqttClientScribeCache.contains(clientId,topic.getTopic())){
+                mqttStoreService.mqttClientScribeCache.bindClientTopic(clientId,topic);
+                mqttStoreService.mqttSubScribeCache.subScribe(topic.getTopic(),clientId,topic);
                 mqttQoSList.add(mqttTopicSubscription.option().qos().value());
-
-                subscribeClients.add(subscribeClient); //订阅topic集合
-
                 log.info("客户端: {} ,订阅: {} ,QOS : {} ,成功!",clientId,mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos().value());
+
+                //subscribeClients.add(subscribeClient); //订阅topic集合
             }else{
                 log.info("客户端: {} ,订阅: {} ,QOS : {} ,失败!",clientId,mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos().value());
             }

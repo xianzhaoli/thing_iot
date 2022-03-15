@@ -36,7 +36,7 @@ public class MqttClientTest {
                 @Override
                 public void run() {
                     for (int j = 0; j < 50 ; j++) {
-                        MqttClient mqttClient = new MqttClient("tcp://127.0.0.1:1883", UUID.randomUUID().toString() + System.currentTimeMillis() + finalI,persistence);
+                        MqttClient mqttClient = new MqttClient("tcp://110.40.178.74:1883", UUID.randomUUID().toString() + System.currentTimeMillis() + finalI,persistence);
                         mqttClient.setCallback(new MQTTOnMessageCallback());
                         MqttConnectOptions connOpts = new MqttConnectOptions();
                         connOpts.setCleanSession(true);

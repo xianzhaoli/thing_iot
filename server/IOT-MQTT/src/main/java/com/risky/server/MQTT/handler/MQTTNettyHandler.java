@@ -130,11 +130,14 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
         }
     }
 
+
+
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         Channel channel = ctx.channel();
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
         if (evt instanceof IdleStateEvent) {
+            //心跳超时
             IdleStateEvent idleStateEvent = (IdleStateEvent) evt;
             if (idleStateEvent.state() == IdleState.ALL_IDLE) {
                 MqttPublishMessage willMessage = (MqttPublishMessage) channel.attr(AttributeKey.valueOf("willMessage")).get();

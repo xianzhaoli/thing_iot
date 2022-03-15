@@ -25,6 +25,12 @@ public class MessageId implements Serializable {
 
     @Override
     public boolean equals(Object o) {
+        if(o == null){
+            return false;
+        }
+        if(!(o instanceof MessageId)){
+            return false;
+        }
         MessageId messageId1 = (MessageId) o;
         return messageId == messageId1.messageId;
     }

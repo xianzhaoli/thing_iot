@@ -25,9 +25,10 @@ public class UnSubscribe {
 
     public void sendUnSubscribeMessage(Channel channel, MqttUnsubscribeMessage mqttUnsubscribeMessage){
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
-
         mqttUnsubscribeMessage.payload().topics().forEach( topic ->{
-            mqttStoreService.unbindSubscribeChannel(topic,clientId);
+            mqttStoreService.mqttSubScribeCache.unSubScribe(topic,clientId);
+            mqttStoreService.mqttClientScribeCache.unBindClientTopic(clientId,topic);
+            //mqttStoreService.unbindSubscribeChannel(topic,clientId);
             log.info("客户端: {} ，取消订阅: {} ,成功!",clientId,topic);
         });
 

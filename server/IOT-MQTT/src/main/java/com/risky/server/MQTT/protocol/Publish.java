@@ -1,8 +1,11 @@
 package com.risky.server.MQTT.protocol;
 
 import cn.hutool.core.util.StrUtil;
+import com.risky.server.MQTT.client.ConnectClient;
 import com.risky.server.MQTT.client.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
+import com.risky.server.MQTT.common.cache.redis.Topic;
+import com.risky.server.MQTT.common.store.SessionStoreMessage;
 import com.risky.server.MQTT.message.*;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -14,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -61,15 +65,44 @@ public class Publish {
             default:
                 break;
         }
-
         //保留消息
         if(mqttPublishMessage.fixedHeader().isRetain()){
             retainMessage.putRetainMessage(mqttPublishMessage.variableHeader().topicName(),
                     new MessageRetry(payLoad,clientId,mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel().value(),null));
         }
-
         //发送消息
-        Set<SubscribeClient> subscribeClients = mqttStoreService.filterChannel(mqttPublishMessage.variableHeader().topicName());
+        Set<String> matched = mqttStoreService.mqttPublishCache.matcherTopic(mqttPublishMessage.variableHeader().topicName());
+        matched.parallelStream().forEach(s -> {
+            Map<String, Topic> map = mqttStoreService.mqttSubScribeCache.entriesEntry(s);
+            map.entrySet().parallelStream().forEach(stringTopicEntry -> {
+                Channel subscribeChannel = mqttStoreService.getChannelByClientId(stringTopicEntry.getKey());
+                if(subscribeChannel != null){
+                    messageService.publishMessage(new SubscribeClient(stringTopicEntry.getValue().getMqttQoS(),
+                                    stringTopicEntry.getValue().getClientId(),stringTopicEntry.getValue().getTopic(),false),
+                                        mqttPublishMessage.variableHeader().topicName(),payLoad,subscribeChannel);
+                }else{
+                    ConnectClient connectClient = mqttStoreService.mqttConnectionClientCache.get(stringTopicEntry.getKey());
+                   // boolean cleanSession = (boolean) subscribeChannel.attr(AttributeKey.valueOf("cleanSession")).get();
+                    if(connectClient != null && connectClient.isCleanSession()){
+                        SessionStoreMessage sessionStoreMessage = SessionStoreMessage.builder()
+                                .clientId(stringTopicEntry.getKey())
+                                .payload(payLoad)
+                                .qos(stringTopicEntry.getValue().getMqttQoS().value())
+                                .topic(stringTopicEntry.getValue().getTopic())
+                                .ts(System.currentTimeMillis())
+                                .build();
+                        //异步写入mongo
+                        mqttStoreService.asyncWorkerPool.storeCleanSessionMessage(sessionStoreMessage);
+                    }else{
+                        mqttStoreService.mqttClientScribeCache.entriesEntry(stringTopicEntry.getKey()).entrySet().parallelStream()
+                                .forEach(stringTopicEntry1 -> mqttStoreService.mqttSubScribeCache.unSubScribe(stringTopicEntry1.getKey(),stringTopicEntry.getKey()));
+                        mqttStoreService.mqttClientScribeCache.removeKey(stringTopicEntry.getKey());
+                        mqttStoreService.mqttConnectionClientCache.removeKey(stringTopicEntry.getKey());
+                    }
+                }
+            });
+        });
+       /* Set<SubscribeClient> subscribeClients = mqttStoreService.filterChannel(mqttPublishMessage.variableHeader().topicName());
         if(!subscribeClients.isEmpty()){
             subscribeClients.parallelStream().forEach(subscribeClient-> {
                 //消息等级由订阅方决定
@@ -81,7 +114,7 @@ public class Publish {
                                                                   mqttPublishMessage.variableHeader().topicName(),subscribeClient.getMqttQoS().value(),null));
                 }
             });
-        }
+        }*/
     }
 
 

@@ -18,7 +18,6 @@ public class DisConnection {
 
     private MqttStoreService mqttStoreService;
 
-
     public DisConnection(MqttStoreService mqttStoreService) {
         this.mqttStoreService = mqttStoreService;
     }
@@ -27,9 +26,14 @@ public class DisConnection {
         channel.close();
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
         boolean cleanSession = (boolean) channel.attr(AttributeKey.valueOf("cleanSession")).get();
+
         mqttStoreService.unbinding(clientId,channel);
         log.info("客户端断开连接[{}],当前在线连接数{}",clientId,mqttStoreService.acitveChannlSize());
         if(cleanSession){
+            mqttStoreService.mqttClientScribeCache.entriesEntry(clientId).entrySet().parallelStream()
+                    .forEach(stringTopicEntry -> mqttStoreService.mqttSubScribeCache.unSubScribe(stringTopicEntry.getKey(),clientId));
+            mqttStoreService.mqttClientScribeCache.removeKey(clientId);
+            mqttStoreService.mqttConnectionClientCache.removeKey(clientId);
             mqttStoreService.clearClientSubscribeTopic(clientId);
         }
     }
