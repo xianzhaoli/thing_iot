@@ -1,8 +1,6 @@
 package com.risky.server.MQTT.handler;
 
-import cn.hutool.core.util.StrUtil;
-import com.risky.server.MQTT.client.SubscribeClient;
-import com.risky.server.MQTT.common.MqttStoreService;
+import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.process.MqttProtocolProcess;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -13,15 +11,11 @@ import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
-import javafx.scene.layout.BackgroundRepeat;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import lombok.extern.slf4j.XSlf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.sql.Struct;
 import java.util.Set;
 
 /**
@@ -96,7 +90,7 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
             ctx.channel().close();
         }
         long e = System.currentTimeMillis();
-        log.info("处理耗时 ----> {}ms",e-start);
+        log.error("处理耗时 ----> {}ms",e-start);
     }
 
 
@@ -104,12 +98,12 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         super.channelActive(ctx);
-        Channel channel = ctx.channel();
+        /*Channel channel = ctx.channel();
         if (channel.pipeline().names().contains("idleState")){
             channel.pipeline().remove("idleState");
         }
         //120秒不发送连接信息，就kill掉
-        channel.pipeline().addFirst("idleState",new IdleStateHandler(0, 0, 120));
+        channel.pipeline().addFirst("idleState",new IdleStateHandler(0, 0, 120));*/
     }
 
     @Override
@@ -126,6 +120,7 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
             ctx.close();
             log.info("异常关闭连接----->");
         } else {
+            mqttProtocolProcess.disConnection().disConnectionProcess(ctx.channel(),null);
             super.exceptionCaught(ctx, cause);
         }
     }

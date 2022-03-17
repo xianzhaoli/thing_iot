@@ -1,7 +1,7 @@
 package com.risky.server.MQTT.system;
 
 import cn.hutool.core.util.StrUtil;
-import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.message.MessageService;
 import io.netty.channel.Channel;

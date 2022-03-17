@@ -4,8 +4,10 @@ package com.risky.server.MQTT;
 import com.risky.server.MQTT.common.MqttStoreService;
 import com.risky.server.MQTT.handler.MQTTNettyHandler;
 import com.risky.server.MQTT.process.MqttProtocolProcess;
+import com.risky.server.MQTT.server.NettyMqttSever;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -23,6 +25,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
 /**
@@ -37,43 +40,9 @@ import javax.annotation.Resource;
 @EnableCaching
 public class MQTTServerStarter {
 
-    @Resource
-    private MqttProtocolProcess mqttProtocolProcess;
-
-    @Value("${iot-server.port:1883}")
-    private int port;
 
     public static void main(String[] args) {
         SpringApplication.run(MQTTServerStarter.class,args);
     }
-    @PostConstruct
-    public void mqttServerRUN(){
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup eventExecutors = new NioEventLoopGroup();
-        try {
-            ServerBootstrap bootstrap = new ServerBootstrap();
-            bootstrap.group(bossGroup,eventExecutors)
-                    .channel(NioServerSocketChannel.class)
-                    .option(ChannelOption.SO_BACKLOG,50000)
-                    .handler(new LoggingHandler(LogLevel.TRACE))
-                    .childHandler(new ChannelInitializer<SocketChannel>() {
-                        protected void initChannel(SocketChannel socketChannel) {
-                            ChannelPipeline p = socketChannel.pipeline();
-                            p.addLast(new MqttDecoder());
-                            p.addLast(MqttEncoder.INSTANCE);
-                            MQTTNettyHandler mqttNettyHandler = new MQTTNettyHandler(mqttProtocolProcess);
-                            p.addLast(mqttNettyHandler);
-                        }
-                    });
-            ChannelFuture f = bootstrap.bind(port).sync();
-            f.channel().closeFuture().sync();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }finally {
-            bossGroup.shutdownGracefully();
-            eventExecutors.shutdownGracefully();
-        }
-    }
-
 
 }

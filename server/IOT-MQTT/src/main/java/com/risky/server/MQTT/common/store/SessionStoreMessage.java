@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class SessionStoreMessage {
 
     @Id
-    @Field("__id")
+    @Field("_id")
     private String id;
 
     @Field("clientId")

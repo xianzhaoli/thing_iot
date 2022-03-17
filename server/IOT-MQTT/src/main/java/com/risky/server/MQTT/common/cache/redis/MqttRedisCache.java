@@ -54,6 +54,7 @@ public class MqttRedisCache<T> {
     }
 
     protected Set<String> scan(final String match){
+        long start = System.currentTimeMillis();
         Set<String> keys = (Set<String>) redisTemplate.execute((RedisCallback) redisConnection -> {
             Set<String> set = new HashSet<>();
             Cursor<byte[]> cursor = redisConnection.scan(new ScanOptions.ScanOptionsBuilder().match(match + "*").count(1000).build());
@@ -62,6 +63,8 @@ public class MqttRedisCache<T> {
             }
             return set;
         });
+        long end = System.currentTimeMillis();
+        log.error("scan 耗时{}ms",end-start);
         return keys;
     }
 
@@ -78,12 +81,24 @@ public class MqttRedisCache<T> {
     }
 
     /**
+     * 获取到匹配的retain消息
+     * @param topic 订阅的topic
+     * @param exitsTopic 已存在的retain topic集合
+     * @return
+     */
+    public Set<String> filterTetainTopic(String topic,Set<String> exitsTopic){
+        return exitsTopic.parallelStream()
+                .filter(key -> topic.equals(key) | topicMatcher(key,topic))
+                .collect(Collectors.toSet());
+    }
+
+    /**
      * topic 匹配，发消息 topic 匹配到所有的channel
      * @param sendTopic
      * @param topicGroup
      * @return
      */
-    public boolean topicMatcher(String sendTopic,String topicGroup){
+    private boolean topicMatcher(String sendTopic,String topicGroup){
         String[] sendArray = sendTopic.split("/");
         String[] groupArray = topicGroup.split("/");
         int sendLength = sendArray.length;

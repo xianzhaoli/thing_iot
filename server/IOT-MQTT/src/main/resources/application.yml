@@ -1,9 +1,6 @@
 spring:
   cache:
-    type: redis
-    cache-names: MQTT
-    redis:
-      key-prefix: MQTT
+    type: caffeine
   redis:
     port: 6379
     host: 127.0.0.1
@@ -24,3 +21,8 @@ logging:
   file:
     path:
     name: D:\data\log\iot-mqtt-server.log
+  level:
+    com.risky: trace
+server:
+  port: 8456
+  address: 0.0.0.0

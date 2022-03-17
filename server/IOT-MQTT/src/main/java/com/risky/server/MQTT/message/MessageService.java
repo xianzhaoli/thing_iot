@@ -1,6 +1,6 @@
 package com.risky.server.MQTT.message;
 
-import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -109,8 +109,10 @@ public class MessageService {
      * @return
      */
     public void releaseMessageId(final String key,final Integer messageId){
-        lockedMessageId.get(key).remove(messageId);
-        log.info("释放了messageId{}",messageId);
+        if(lockedMessageId.containsKey(key)){
+            lockedMessageId.get(key).remove(messageId);
+            log.info("释放了messageId{}",messageId);
+        }
     }
 
 

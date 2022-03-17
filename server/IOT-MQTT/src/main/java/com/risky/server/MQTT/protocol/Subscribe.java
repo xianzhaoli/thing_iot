@@ -1,9 +1,9 @@
 package com.risky.server.MQTT.protocol;
 
-import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
-import com.risky.server.MQTT.common.cache.redis.Topic;
-import com.risky.server.MQTT.message.MessageRetry;
+import com.risky.server.MQTT.common.cache.redis.subscribe.Topic;
+import com.risky.server.MQTT.common.cache.redis.retain.MqttRetain;
 import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
 import com.risky.server.MQTT.message.RetainMessage;
@@ -14,7 +14,6 @@ import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -49,14 +48,15 @@ public class Subscribe {
     public void sendSubscribeMessage(Channel channel, MqttSubscribeMessage mqttSubscribeMessage){
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
         List<Integer> mqttQoSList = new ArrayList<Integer>();
-        List<SubscribeClient> subscribeClients = new ArrayList<>();
-
+        List<String> topics = new ArrayList<>();
+        mqttStoreService.getClientInfo(clientId);
         mqttSubscribeMessage.payload().topicSubscriptions().forEach(mqttTopicSubscription -> {
             Topic topic = new Topic(mqttTopicSubscription.topicName(),clientId,mqttTopicSubscription.qualityOfService());
             if(!mqttStoreService.mqttClientScribeCache.contains(clientId,topic.getTopic())){
                 mqttStoreService.mqttClientScribeCache.bindClientTopic(clientId,topic);
                 mqttStoreService.mqttSubScribeCache.subScribe(topic.getTopic(),clientId,topic);
                 mqttQoSList.add(mqttTopicSubscription.option().qos().value());
+                topics.add(mqttTopicSubscription.topicName());
                 log.info("客户端: {} ,订阅: {} ,QOS : {} ,成功!",clientId,mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos().value());
 
                 //subscribeClients.add(subscribeClient); //订阅topic集合
@@ -70,9 +70,17 @@ public class Subscribe {
         );
         channel.writeAndFlush(mqttSubAckMessage);
         //发送系统消息
-        if(!subscribeClients.isEmpty()){
-            subscribeClients.parallelStream().forEach(subscribeClient -> {
-                if(systemTopic.getSystemBorders().contains(subscribeClient.getTopic())){
+        if(!topics.isEmpty()){
+            topics.parallelStream().forEach(s -> {
+                //retain消息
+                Set<String> set = mqttStoreService.mqttSubScribeCache.matcherTopic(s);
+                set.parallelStream().forEach(topicName -> {
+                    MqttRetain mqttRetain = mqttStoreService.mqttRetainCache.getRetain(topicName);
+                    if(mqttRetain != null){
+                        messageService.publishMessage(new SubscribeClient(mqttRetain.getMqttQoS(),clientId,mqttRetain.getTopic(),true),mqttRetain.getTopic(),mqttRetain.getPayload(),channel);
+                    }
+                });
+                /*if(systemTopic.getSystemBorders().contains(topics)){
                     systemTopic.sendSysInfo(subscribeClient);
                 }else{
                     //离线消息
@@ -89,7 +97,7 @@ public class Subscribe {
                         MessageRetry messageRetry = retainMessage.getRetainMessage(topic);
                         messageService.publishMessage(subscribeClient,messageRetry.getTopic(),messageRetry.getPayload(),channel);
                     });
-                }
+                }*/
             });
         }
 

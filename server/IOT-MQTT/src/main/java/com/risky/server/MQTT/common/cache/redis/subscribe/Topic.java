@@ -1,4 +1,4 @@
-package com.risky.server.MQTT.common.cache.redis;
+package com.risky.server.MQTT.common.cache.redis.subscribe;
 
 import io.netty.handler.codec.mqtt.MqttQoS;
 import lombok.Builder;

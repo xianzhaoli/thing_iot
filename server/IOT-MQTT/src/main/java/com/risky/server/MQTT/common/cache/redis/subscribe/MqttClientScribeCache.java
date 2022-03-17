@@ -1,11 +1,9 @@
 package com.risky.server.MQTT.common.cache.redis.subscribe;
 
 import com.risky.server.MQTT.common.cache.redis.MqttRedisCache;
-import com.risky.server.MQTT.common.cache.redis.Topic;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.Map;
 
 @Component

@@ -1,25 +1,21 @@
 package com.risky.server.MQTT.protocol;
 
 import cn.hutool.core.util.StrUtil;
-import com.risky.server.MQTT.client.ConnectClient;
-import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.common.MqttStoreService;
-import com.risky.server.MQTT.common.cache.redis.Topic;
+import com.risky.server.MQTT.common.cache.redis.subscribe.Topic;
+import com.risky.server.MQTT.common.cache.redis.retain.MqttRetain;
 import com.risky.server.MQTT.common.store.SessionStoreMessage;
+import com.risky.server.MQTT.config.ConnectClient;
 import com.risky.server.MQTT.message.*;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.AttributeKey;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 /**
  * @author ：xianzhaoli
@@ -67,11 +63,12 @@ public class Publish {
         }
         //保留消息
         if(mqttPublishMessage.fixedHeader().isRetain()){
-            retainMessage.putRetainMessage(mqttPublishMessage.variableHeader().topicName(),
-                    new MessageRetry(payLoad,clientId,mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel().value(),null));
+            mqttStoreService.mqttRetainCache.setRetainMessage(new MqttRetain(mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel(),payLoad));
+            /*retainMessage.putRetainMessage(mqttPublishMessage.variableHeader().topicName(),
+                    new MessageRetry(payLoad,clientId,mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel().value(),null));*/
         }
         //发送消息
-        Set<String> matched = mqttStoreService.mqttPublishCache.matcherTopic(mqttPublishMessage.variableHeader().topicName());
+        Set<String> matched = mqttStoreService.mqttSubScribeCache.matcherTopic(mqttPublishMessage.variableHeader().topicName());
         matched.parallelStream().forEach(s -> {
             Map<String, Topic> map = mqttStoreService.mqttSubScribeCache.entriesEntry(s);
             map.entrySet().parallelStream().forEach(stringTopicEntry -> {
@@ -82,13 +79,12 @@ public class Publish {
                                         mqttPublishMessage.variableHeader().topicName(),payLoad,subscribeChannel);
                 }else{
                     ConnectClient connectClient = mqttStoreService.mqttConnectionClientCache.get(stringTopicEntry.getKey());
-                   // boolean cleanSession = (boolean) subscribeChannel.attr(AttributeKey.valueOf("cleanSession")).get();
-                    if(connectClient != null && connectClient.isCleanSession()){
+                    if(connectClient != null && !connectClient.isCleanSession()){
                         SessionStoreMessage sessionStoreMessage = SessionStoreMessage.builder()
                                 .clientId(stringTopicEntry.getKey())
                                 .payload(payLoad)
                                 .qos(stringTopicEntry.getValue().getMqttQoS().value())
-                                .topic(stringTopicEntry.getValue().getTopic())
+                                .topic(mqttPublishMessage.variableHeader().topicName())
                                 .ts(System.currentTimeMillis())
                                 .build();
                         //异步写入mongo

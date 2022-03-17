@@ -1,19 +1,19 @@
 package com.risky.server.MQTT.common;
 
-import com.risky.server.MQTT.client.SubscribeClient;
+import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.common.cache.redis.connection.MqttConnectionClientCache;
 import com.risky.server.MQTT.common.cache.redis.publish.MqttPublishCache;
+import com.risky.server.MQTT.common.cache.redis.retain.MqttRetainCache;
 import com.risky.server.MQTT.common.cache.redis.subscribe.MqttClientScribeCache;
 import com.risky.server.MQTT.common.cache.redis.subscribe.MqttSubScribeCache;
 import com.risky.server.MQTT.common.thread.AsyncWorkerPool;
+import com.risky.server.MQTT.config.ConnectClient;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.paho.client.mqttv3.internal.wire.MqttConnect;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -53,6 +53,9 @@ public class MqttStoreService {
     @Autowired
     public AsyncWorkerPool asyncWorkerPool;
 
+    @Autowired
+    public MqttRetainCache mqttRetainCache;
+
     /**
      * 当前的客户端数
      * @return
@@ -61,10 +64,19 @@ public class MqttStoreService {
         return channelClientID.size();
     }
 
-    public void binding(String clientId, Channel channel){
+    public ConnectClient getClientInfo(String clientId){
+        return mqttConnectionClientCache.get(clientId);
+    }
+
+    public boolean binding(String clientId, Channel channel, ConnectClient connectClient){
         if(clientIDChannel.containsKey(clientId)){
             Channel oldChannel =  clientIDChannel.get(clientId);
             boolean isOpen = oldChannel.isOpen();
+            mqttClientScribeCache.entriesEntry(clientId).entrySet().parallelStream()
+                    .forEach(stringTopicEntry -> mqttSubScribeCache.unSubScribe(stringTopicEntry.getKey(),clientId));
+            mqttClientScribeCache.removeKey(clientId);
+            mqttConnectionClientCache.removeKey(clientId);
+            clearClientSubscribeTopic(clientId);
             if(isOpen & oldChannel.equals(channel)){
                 //此处参考[MQTT-3.1.0-2]
                 //在一个网络连接上，客户端只能发送一次CONNECT报文。
@@ -73,7 +85,7 @@ public class MqttStoreService {
                     log.info("客户端发送两次connection报文，断开连接{}",clientId);
                     channel.close();
                     unbinding(clientId,channel);
-                    return;
+                    return false;
                 }
             }
             if(isOpen){
@@ -82,9 +94,11 @@ public class MqttStoreService {
             }
             channelClientID.remove(oldChannel);
         }
+        mqttConnectionClientCache.add(clientId,connectClient);
         clientIDChannel.put(clientId,channel);
         channelClientID.put(channel,clientId);
         log.info("新的客户端连接[{}],当前在线连接数{}",clientId,clientIDChannel.size());
+        return true;
     }
 
     public void unbinding(String clientID, Channel channel){
