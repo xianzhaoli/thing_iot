@@ -30,23 +30,15 @@ public class NettyMqttSever  {
 
     @Value("${iot-server.port:1883}")
     private int port;
-
+    @Value("${iot-server.host:0.0.0.0}")
+    private String host;
     @Resource
     private MqttProtocolProcess mqttProtocolProcess;
 
-    /*@Override
-    public void destroy() {
-        if(bossGroup != null){
-            bossGroup.shutdownGracefully();
-        }
-        if(workGroup != null){
-            workGroup.shutdownGracefully();
-        }
-    }*/
     @PostConstruct
     public void startup() {
         bossGroup = new NioEventLoopGroup();
-        workGroup = new NioEventLoopGroup();
+        workGroup = new NioEventLoopGroup(12);
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.channel(NioServerSocketChannel.class);
@@ -60,15 +52,16 @@ public class NettyMqttSever  {
             bootstrap.group(bossGroup,workGroup)
                     .handler(new LoggingHandler(LogLevel.TRACE))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
+                        @Override
                         protected void initChannel(SocketChannel socketChannel) {
                             ChannelPipeline p = socketChannel.pipeline();
+                            p.addLast(new MqttDecoder(65535));
                             p.addLast(MqttEncoder.INSTANCE);
-                            p.addLast(new MqttDecoder());
                             MQTTNettyHandler mqttNettyHandler = new MQTTNettyHandler(mqttProtocolProcess);
                             p.addLast(mqttNettyHandler);
                         }
                     });
-            serverChanel = bootstrap.bind(port).sync().channel();
+            serverChanel = bootstrap.bind(host,port).sync().channel();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

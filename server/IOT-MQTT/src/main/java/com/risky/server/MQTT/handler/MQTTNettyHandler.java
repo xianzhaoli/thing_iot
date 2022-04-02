@@ -2,6 +2,7 @@ package com.risky.server.MQTT.handler;
 
 import com.risky.server.MQTT.common.cache.redis.subscribe.SubscribeClient;
 import com.risky.server.MQTT.process.MqttProtocolProcess;
+import com.risky.server.MQTT.system.session.MqttTopicMatcher;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -16,7 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author ：xianzhaoli
@@ -25,20 +31,27 @@ import java.util.Set;
  * @modified By：
  * @version: 1.0
  */
-@AllArgsConstructor
 @Slf4j
 public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
+    private volatile InetSocketAddress inetSocketAddress;
 
     private MqttProtocolProcess mqttProtocolProcess;
 
+    private Map<String,String> upgrade = new HashMap<>();
+
+    private final ConcurrentMap<MqttTopicMatcher, Integer> mqttQoSMap;
+
+    public MQTTNettyHandler(MqttProtocolProcess mqttProtocolProcess) {
+        this.mqttProtocolProcess = mqttProtocolProcess;
+        this.mqttQoSMap = new ConcurrentHashMap<>();
+    }
+
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, MqttMessage msg) {
-
         long start = System.currentTimeMillis();
-
         Channel channel = ctx.channel();
-
+        inetSocketAddress = (InetSocketAddress) channel.remoteAddress();
         if(msg.decoderResult().isSuccess()){
             switch (msg.fixedHeader().messageType()){
                 case CONNECT:
@@ -49,19 +62,17 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
                     //心跳包
                     mqttProtocolProcess.ping().sendPongMessage(channel,msg);
                     break;
-                case PUBLISH: //发布消息
+                case PUBLISH:
+                    //发布消息
                     mqttProtocolProcess.publish().sendPublishMessage(channel, (MqttPublishMessage) msg);
                     break;
                 case PUBREC:
-                    System.out.println("PUBREC ------");
                     mqttProtocolProcess.pubRec().processPubRec(channel, (MqttMessageIdVariableHeader) msg.variableHeader());
                     break;
                 case PUBACK:
-                    System.out.println("PUBACK ------");
                     mqttProtocolProcess.pubAck().sendPubAckMessage(channel, (MqttPubAckMessage) msg);
                     break;
                 case SUBACK:
-                    System.out.println("SUBACK ------");
                     break;
                 case SUBSCRIBE:
                     mqttProtocolProcess.subscribe().sendSubscribeMessage(channel, (MqttSubscribeMessage) msg);
@@ -71,14 +82,12 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
                     mqttProtocolProcess.pubRel().sendPubCompMessage(channel, (MqttMessageIdVariableHeader) msg.variableHeader());
                     break;
                 case PUBCOMP:
-                    System.out.println("PUBCOMP ------");
                     mqttProtocolProcess.pubComp().processPubComp(channel, (MqttMessageIdVariableHeader) msg.variableHeader());
                     break;
                 case DISCONNECT:
                     mqttProtocolProcess.disConnection().disConnectionProcess(channel,msg);
                     break;
                 case UNSUBACK:
-                    System.out.println("UNSUBACK ------");
                     break;
                 case UNSUBSCRIBE:
                     mqttProtocolProcess.unSubscribe().sendUnSubscribeMessage(channel, (MqttUnsubscribeMessage) msg);

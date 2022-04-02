@@ -40,7 +40,6 @@ import javax.annotation.Resource;
 @EnableCaching
 public class MQTTServerStarter {
 
-
     public static void main(String[] args) {
         SpringApplication.run(MQTTServerStarter.class,args);
     }
