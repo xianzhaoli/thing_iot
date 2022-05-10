@@ -8,6 +8,7 @@ import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
 import com.risky.server.MQTT.message.RetainMessage;
 import com.risky.server.MQTT.system.SystemTopic;
+import com.risky.server.MQTT.util.MqttTopicFilterFactory;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.AttributeKey;
@@ -47,14 +48,15 @@ public class Subscribe {
 
     public void sendSubscribeMessage(Channel channel, MqttSubscribeMessage mqttSubscribeMessage){
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
+        boolean cleanSession = (boolean) channel.attr(AttributeKey.valueOf("cleanSession")).get();
         List<Integer> mqttQoSList = new ArrayList<Integer>();
         List<String> topics = new ArrayList<>();
         mqttStoreService.getClientInfo(clientId);
         mqttSubscribeMessage.payload().topicSubscriptions().forEach(mqttTopicSubscription -> {
-            Topic topic = new Topic(mqttTopicSubscription.topicName(),clientId,mqttTopicSubscription.qualityOfService());
+            Topic topic = new Topic(mqttTopicSubscription.topicName(),clientId,mqttTopicSubscription.qualityOfService(), MqttTopicFilterFactory.toFilter(mqttTopicSubscription.topicName()),cleanSession);
             if(!mqttStoreService.mqttClientScribeCache.contains(clientId,topic.getTopic())){
                 mqttStoreService.mqttClientScribeCache.bindClientTopic(clientId,topic);
-                mqttStoreService.mqttSubScribeCache.subScribe(topic.getTopic(),clientId,topic);
+                mqttStoreService.mqttSubScribeCache.subScribe(topic);
                 mqttQoSList.add(mqttTopicSubscription.option().qos().value());
                 topics.add(mqttTopicSubscription.topicName());
                 log.info("客户端: {} ,订阅: {} ,QOS : {} ,成功!",clientId,mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos().value());
@@ -73,31 +75,11 @@ public class Subscribe {
         if(!topics.isEmpty()){
             topics.parallelStream().forEach(s -> {
                 //retain消息
-                Set<String> set = mqttStoreService.mqttSubScribeCache.matcherTopic(s);
-                set.parallelStream().forEach(topicName -> {
-                    MqttRetain mqttRetain = mqttStoreService.mqttRetainCache.getRetain(topicName);
-                    if(mqttRetain != null){
-                        messageService.publishMessage(new SubscribeClient(mqttRetain.getMqttQoS(),clientId,mqttRetain.getTopic(),true),mqttRetain.getTopic(),mqttRetain.getPayload(),channel);
-                    }
-                });
-                /*if(systemTopic.getSystemBorders().contains(topics)){
-                    systemTopic.sendSysInfo(subscribeClient);
-                }else{
-                    //离线消息
-                    List<MessageRetry> messageRetries = redisMessagePersistent.getAndRemoveOfflineMessage(subscribeClient.getClientId(),subscribeClient.getTopic());
-                    if(messageRetries != null){
-                        messageRetries.parallelStream().forEach(messageRetry
-                                -> messageService.publishMessage(subscribeClient,messageRetry.getTopic(),messageRetry.getPayload(),channel)
-                        );
-                    }
-
-                    //topic 的保留消息
-                    List<String> key = retainMessage.matcherRetainMessage(subscribeClient.getTopic());
-                    key.parallelStream().forEach(topic -> {
-                        MessageRetry messageRetry = retainMessage.getRetainMessage(topic);
-                        messageService.publishMessage(subscribeClient,messageRetry.getTopic(),messageRetry.getPayload(),channel);
-                    });
-                }*/
+                List<MqttRetain> mqttRetains = mqttStoreService.mqttRetainCache.getRetain(s);
+                for (MqttRetain mqttRetain : mqttRetains) {
+                    messageService.publishMessage(new SubscribeClient(mqttRetain.getMqttQoS(),clientId,mqttRetain.getTopic(),true)
+                            ,mqttRetain.getTopic(),mqttRetain.getPayload(),channel,true);
+                }
             });
         }
 

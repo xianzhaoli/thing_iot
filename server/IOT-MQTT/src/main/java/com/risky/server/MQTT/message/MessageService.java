@@ -117,11 +117,11 @@ public class MessageService {
 
 
 
-    public void publishMessage(SubscribeClient subscribeClient,String topicName,byte[] payLoad,Channel channel){
+    public void publishMessage(SubscribeClient subscribeClient,String topicName,byte[] payLoad,Channel channel,boolean retain){
         switch (subscribeClient.getMqttQoS()) {
             case AT_MOST_ONCE: //QOS = 0
                 MqttPublishMessage mqttPublishMessageQOS0 = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_MOST_ONCE,false,0)
+                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_MOST_ONCE,retain,0)
                         ,new MqttPublishVariableHeader(topicName,0), Unpooled.buffer().writeBytes(payLoad)
                 );
                 channel.writeAndFlush(mqttPublishMessageQOS0);
@@ -129,7 +129,7 @@ public class MessageService {
             case EXACTLY_ONCE: //QOS = 2
                 MessageId messageIdQos2 = getMessageId(subscribeClient.getClientId());
                 MqttPublishMessage mqttPublishMessageQOS2 = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.EXACTLY_ONCE,false,0)
+                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.EXACTLY_ONCE,retain,0)
                         ,new MqttPublishVariableHeader(topicName,messageIdQos2.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
                 );
                 channel.writeAndFlush(mqttPublishMessageQOS2);
@@ -137,7 +137,7 @@ public class MessageService {
             case AT_LEAST_ONCE: //QOS = 1
                 MessageId messageIdQos1 = getMessageId(subscribeClient.getClientId());
                 MqttPublishMessage mqttPublishMessageQOS1 = (MqttPublishMessage) MqttMessageFactory.newMessage(
-                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_LEAST_ONCE,false,0)
+                        new MqttFixedHeader(MqttMessageType.PUBLISH,false,MqttQoS.AT_LEAST_ONCE,retain,0)
                         ,new MqttPublishVariableHeader(topicName,messageIdQos1.getMessageId()), Unpooled.buffer().writeBytes(payLoad)
                 );
                 channel.writeAndFlush(mqttPublishMessageQOS1);

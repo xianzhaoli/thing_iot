@@ -59,7 +59,7 @@ public class MqttRedisCache<T> {
             Set<String> set = new HashSet<>();
             Cursor<byte[]> cursor = redisConnection.scan(new ScanOptions.ScanOptionsBuilder().match(match + "*").count(1000).build());
             while (cursor.hasNext()) {
-                set.add(new String(cursor.next()).replace(match,""));
+                set.add(new String(cursor.next()));
             }
             return set;
         });

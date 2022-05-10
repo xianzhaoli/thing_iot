@@ -3,53 +3,62 @@ package com.risky.server.MQTT.common.cache.redis.subscribe;
 import com.google.common.collect.Sets;
 import com.risky.server.MQTT.common.cache.redis.MqttRedisCache;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
-@CacheConfig(cacheNames = "topic")
+//@CacheConfig(cacheNames = "topic",cacheManager = "caffeineCacheManager")
 public class MqttSubScribeCache extends MqttRedisCache<Topic> {
 
-    /*@Autowired
-    private TopicCache topicCache;*/
+    private Set<Topic> topics = Sets.newConcurrentHashSet();
 
-    private Set<String> topics = Sets.newConcurrentHashSet();
+    private Map<String, Set<String>> subScribeTopics = new ConcurrentHashMap<>();
+
 
     public static final String SUBSCRIBE_KEY_REDIS = "SERVER:MQTT:SUBSCRIBE:";
 
-    @PostConstruct
+    /*@PostConstruct
     public void initTopic(){
         topics = scan(MqttSubScribeCache.SUBSCRIBE_KEY_REDIS);
-    }
-
-    public Set<String> matcherTopic(String topic){
-        //Set<String> topics = scan(MqttSubScribeCache.SUBSCRIBE_KEY_REDIS);
-        return filterChannel(topic,topics);
-    }
-
-
-
+    }*/
 
     /**
      * 添加topic订阅
-     * @param topicName
-     * @param clientId
      * @param topic
      * @return
      */
-    @CachePut(key = "#topicName")
-    public Map<String,Topic> subScribe(String topicName, String clientId, Topic topic){
-       hset(SUBSCRIBE_KEY_REDIS + topicName,clientId,topic);
-       topics.add(topicName);
-       return hentries(SUBSCRIBE_KEY_REDIS + topicName);
+    public boolean subScribe(Topic topic){
+        if(topics.contains(topic)){
+            return false;
+        }
+        if(!subScribeTopics.containsKey(topic.getClientId())){
+            subScribeTopics.put(topic.getClientId(),Sets.newConcurrentHashSet());
+        }
+        subScribeTopics.get(topic.getClientId()).add(topic.getTopic());
+        return topics.add(topic);
+    }
+
+    /**
+     * 通过clientId 批量取消订阅
+     * @param clientId
+     * @return
+     */
+    public boolean unSubScribe(String clientId){
+        if(subScribeTopics.containsKey(clientId)){
+            for (String topicName : subScribeTopics.get(clientId)) {
+                topics.remove(new Topic(topicName,clientId));
+            }
+            subScribeTopics.remove(clientId);
+        }
+        return !subScribeTopics.containsKey(clientId);
     }
 
     /**
@@ -57,10 +66,8 @@ public class MqttSubScribeCache extends MqttRedisCache<Topic> {
      * @param topicName
      * @param clientId
      */
-    @CachePut(key = "#topicName")
-    public Map<String,Topic> unSubScribe(String topicName,String clientId){
-        hdel(SUBSCRIBE_KEY_REDIS + topicName,clientId);
-        return hentries(SUBSCRIBE_KEY_REDIS + topicName);
+    public boolean unSubScribe(String topicName,String clientId){
+        return topics.remove(new Topic(topicName,clientId));
     }
 
     @Cacheable(key = "#topicName")
@@ -68,5 +75,15 @@ public class MqttSubScribeCache extends MqttRedisCache<Topic> {
         return hentries(SUBSCRIBE_KEY_REDIS + topicName);
     }
 
+    /**
+     * 获取所有匹配的订阅客户端
+     * @param topicName
+     * @return
+     */
+    public Set<Topic> matcherTopic(String topicName){
+        return topics.stream()
+                     .filter(topic -> topic.getMqttTopicFilter().filter(topicName))
+                     .collect(Collectors.toSet());
+    }
 
 }

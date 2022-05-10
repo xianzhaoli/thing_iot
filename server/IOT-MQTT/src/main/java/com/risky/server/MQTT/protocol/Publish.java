@@ -42,61 +42,62 @@ public class Publish {
         this.retainMessage = retainMessage;
     }
 
-    public void sendPublishMessage(Channel channel, MqttPublishMessage mqttPublishMessage){
+    public void sendPublishMessage(Channel channel, MqttPublishMessage mqttPublishMessage) {
         ByteBuf byteBuf = mqttPublishMessage.payload();
         byte[] payLoad = new byte[byteBuf.readableBytes()];
         int index = byteBuf.readerIndex();
-        byteBuf.getBytes(index,payLoad);
+        byteBuf.getBytes(index, payLoad);
 
         String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
-        log.info("客户端:{},topic:{},QOS:[{}],发布消息:{}",clientId,mqttPublishMessage.variableHeader().topicName(),
-                            mqttPublishMessage.fixedHeader().qosLevel().value(), StrUtil.str(payLoad,"UTF-8"));
-        switch (mqttPublishMessage.fixedHeader().qosLevel()){
+        log.info("客户端:{},topic:{},QOS:[{}],发布消息:{}", clientId, mqttPublishMessage.variableHeader().topicName(),
+                mqttPublishMessage.fixedHeader().qosLevel().value(), StrUtil.str(payLoad, "UTF-8"));
+        switch (mqttPublishMessage.fixedHeader().qosLevel()) {
             case AT_LEAST_ONCE:
-                sendQos1Message(channel,mqttPublishMessage);
+                sendQos1Message(channel, mqttPublishMessage);
                 break;
             case EXACTLY_ONCE:
-                sendQos2Message(channel,mqttPublishMessage);
+                sendQos2Message(channel, mqttPublishMessage);
                 break;
             default:
                 break;
         }
         //保留消息
-        if(mqttPublishMessage.fixedHeader().isRetain()){
-            mqttStoreService.mqttRetainCache.setRetainMessage(new MqttRetain(mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel(),payLoad));
-            /*retainMessage.putRetainMessage(mqttPublishMessage.variableHeader().topicName(),
-                    new MessageRetry(payLoad,clientId,mqttPublishMessage.variableHeader().topicName(),mqttPublishMessage.fixedHeader().qosLevel().value(),null));*/
+        if (mqttPublishMessage.fixedHeader().isRetain()) {
+            if(payLoad.length > 0){
+                mqttStoreService.mqttRetainCache.setRetainMessage(new MqttRetain(mqttPublishMessage.variableHeader().topicName()
+                        , mqttPublishMessage.fixedHeader().qosLevel(), payLoad));
+            }else{
+                //零字节负载 并且是保留消息， 删除保留消息
+                mqttStoreService.mqttRetainCache.removeRetainMessage(mqttPublishMessage.variableHeader().topicName());
+                return;
+            }
         }
         //发送消息
-        Set<String> matched = mqttStoreService.mqttSubScribeCache.matcherTopic(mqttPublishMessage.variableHeader().topicName());
-        matched.parallelStream().forEach(s -> {
-            Map<String, Topic> map = mqttStoreService.mqttSubScribeCache.entriesEntry(s);
-            map.entrySet().parallelStream().forEach(stringTopicEntry -> {
-                Channel subscribeChannel = mqttStoreService.getChannelByClientId(stringTopicEntry.getKey());
-                if(subscribeChannel != null){
-                    messageService.publishMessage(new SubscribeClient(stringTopicEntry.getValue().getMqttQoS(),
-                                    stringTopicEntry.getValue().getClientId(),stringTopicEntry.getValue().getTopic(),false),
-                                        mqttPublishMessage.variableHeader().topicName(),payLoad,subscribeChannel);
-                }else{
-                    ConnectClient connectClient = mqttStoreService.mqttConnectionClientCache.get(stringTopicEntry.getKey());
-                    if(connectClient != null && !connectClient.isCleanSession()){
-                        SessionStoreMessage sessionStoreMessage = SessionStoreMessage.builder()
-                                .clientId(stringTopicEntry.getKey())
-                                .payload(payLoad)
-                                .qos(stringTopicEntry.getValue().getMqttQoS().value())
-                                .topic(mqttPublishMessage.variableHeader().topicName())
-                                .ts(System.currentTimeMillis())
-                                .build();
-                        //异步写入mongo
-                        mqttStoreService.asyncWorkerPool.storeCleanSessionMessage(sessionStoreMessage);
-                    }else{
-                        mqttStoreService.mqttClientScribeCache.entriesEntry(stringTopicEntry.getKey()).entrySet().parallelStream()
-                                .forEach(stringTopicEntry1 -> mqttStoreService.mqttSubScribeCache.unSubScribe(stringTopicEntry1.getKey(),stringTopicEntry.getKey()));
-                        mqttStoreService.mqttClientScribeCache.removeKey(stringTopicEntry.getKey());
-                        mqttStoreService.mqttConnectionClientCache.removeKey(stringTopicEntry.getKey());
-                    }
+        Set<Topic> matched = mqttStoreService.mqttSubScribeCache.matcherTopic(mqttPublishMessage.variableHeader().topicName());
+        matched.stream().forEach(topic -> {
+            Channel subscribeChannel = mqttStoreService.getChannelByClientId(topic.getClientId());
+            if (subscribeChannel != null) {
+                messageService.publishMessage(new SubscribeClient(topic.getMqttQoS(),
+                                topic.getClientId(), topic.getTopic(), false),
+                        mqttPublishMessage.variableHeader().topicName(), payLoad, subscribeChannel,false);
+            } else {
+                ConnectClient connectClient = mqttStoreService.mqttConnectionClientCache.get(topic.getClientId());
+                if (connectClient != null && !connectClient.isCleanSession()) {
+                    SessionStoreMessage sessionStoreMessage = SessionStoreMessage.builder()
+                            .clientId(topic.getClientId())
+                            .payload(payLoad)
+                            .qos(topic.getMqttQoS().value())
+                            .topic(mqttPublishMessage.variableHeader().topicName())
+                            .ts(System.currentTimeMillis())
+                            .build();
+                    //异步写入mongo
+                    mqttStoreService.asyncWorkerPool.storeCleanSessionMessage(sessionStoreMessage);
+                } else {
+                    mqttStoreService.mqttSubScribeCache.unSubScribe(topic.getClientId());
+                    mqttStoreService.mqttClientScribeCache.removeKey(topic.getClientId());
+                    mqttStoreService.mqttConnectionClientCache.removeKey(topic.getClientId());
                 }
-            });
+            }
         });
        /* Set<SubscribeClient> subscribeClients = mqttStoreService.filterChannel(mqttPublishMessage.variableHeader().topicName());
         if(!subscribeClients.isEmpty()){
@@ -114,18 +115,18 @@ public class Publish {
     }
 
 
-    private void sendQos1Message(Channel channel,MqttPublishMessage mqttPublishMessage){
+    private void sendQos1Message(Channel channel, MqttPublishMessage mqttPublishMessage) {
         MqttPubAckMessage pubAckMessage = (MqttPubAckMessage) MqttMessageFactory.newMessage(
-                new MqttFixedHeader(MqttMessageType.PUBACK,false,MqttQoS.AT_MOST_ONCE,false,0)
-                ,MqttMessageIdVariableHeader.from(mqttPublishMessage.variableHeader().packetId()),null
+                new MqttFixedHeader(MqttMessageType.PUBACK, false, MqttQoS.AT_MOST_ONCE, false, 0)
+                , MqttMessageIdVariableHeader.from(mqttPublishMessage.variableHeader().packetId()), null
         );
         channel.writeAndFlush(pubAckMessage);
-
     }
-    private void sendQos2Message(Channel channel,MqttPublishMessage mqttPublishMessage){
-        MqttMessage pubRecMessage =  MqttMessageFactory.newMessage(
-                new MqttFixedHeader(MqttMessageType.PUBREC,false,MqttQoS.AT_MOST_ONCE,false,0)
-                ,MqttMessageIdVariableHeader.from(mqttPublishMessage.variableHeader().packetId()),null
+
+    private void sendQos2Message(Channel channel, MqttPublishMessage mqttPublishMessage) {
+        MqttMessage pubRecMessage = MqttMessageFactory.newMessage(
+                new MqttFixedHeader(MqttMessageType.PUBREC, false, MqttQoS.AT_MOST_ONCE, false, 0)
+                , MqttMessageIdVariableHeader.from(mqttPublishMessage.variableHeader().packetId()), null
         );
         channel.writeAndFlush(pubRecMessage);
     }

@@ -2,14 +2,17 @@ package com.risky.server.MQTT.util;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.regex.Pattern;
 
 /**
  * @author lxz
  */
 @Data
-public class RegexTopicFilter implements MqttTopicFilter {
+public class RegexTopicFilter implements MqttTopicFilter,Serializable {
 
+    private static final long serialVersionUID = -3830116437499354280L;
+    
     private final Pattern regex;
 
     public RegexTopicFilter(String regex) {

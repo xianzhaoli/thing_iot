@@ -2,9 +2,12 @@ package com.risky.server.MQTT.util;
 
 import lombok.Data;
 
-@Data
-public class EqualsTopicFilter implements MqttTopicFilter {
+import java.io.Serializable;
 
+@Data
+public class EqualsTopicFilter implements MqttTopicFilter, Serializable {
+
+    private static final long serialVersionUID = -2950415533962817469L;
     private final String filter;
 
     @Override

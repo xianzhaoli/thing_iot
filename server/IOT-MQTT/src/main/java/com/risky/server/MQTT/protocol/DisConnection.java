@@ -29,8 +29,7 @@ public class DisConnection {
         mqttStoreService.unbinding(clientId,channel);
         log.info("客户端断开连接[{}],当前在线连接数{}",clientId,mqttStoreService.acitveChannlSize());
         if(cleanSession){
-            mqttStoreService.mqttClientScribeCache.entriesEntry(clientId).entrySet().parallelStream()
-                    .forEach(stringTopicEntry -> mqttStoreService.mqttSubScribeCache.unSubScribe(stringTopicEntry.getKey(),clientId));
+            mqttStoreService.mqttSubScribeCache.unSubScribe(clientId);
             mqttStoreService.mqttClientScribeCache.removeKey(clientId);
             mqttStoreService.mqttConnectionClientCache.removeKey(clientId);
             mqttStoreService.clearClientSubscribeTopic(clientId);

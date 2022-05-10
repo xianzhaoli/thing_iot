@@ -56,7 +56,7 @@ public class AsyncWorkerPool {
         Channel subscribeChannel = mqttStoreService.getChannelByClientId(clientId);
 
         if(!offlineMessage.isEmpty()){
-            executor.execute(new Woker(() -> {
+            /*executor.execute(new Woker(() -> {
                 offlineMessage.entrySet().parallelStream().forEach(stringListEntry -> {
                     stringListEntry.getValue().parallelStream().forEach(sessionStoreMessage -> {
                         messageService.publishMessage(new SubscribeClient(MqttQoS.valueOf(sessionStoreMessage.getQos()),
@@ -64,7 +64,7 @@ public class AsyncWorkerPool {
                                 stringListEntry.getKey(),sessionStoreMessage.getPayload(),subscribeChannel);
                     });
                 });
-            }));
+            }));*/
         }
     }
 

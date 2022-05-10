@@ -72,8 +72,7 @@ public class MqttStoreService {
         if(clientIDChannel.containsKey(clientId)){
             Channel oldChannel =  clientIDChannel.get(clientId);
             boolean isOpen = oldChannel.isOpen();
-            mqttClientScribeCache.entriesEntry(clientId).entrySet().parallelStream()
-                    .forEach(stringTopicEntry -> mqttSubScribeCache.unSubScribe(stringTopicEntry.getKey(),clientId));
+             mqttSubScribeCache.unSubScribe(clientId);
             mqttClientScribeCache.removeKey(clientId);
             mqttConnectionClientCache.removeKey(clientId);
             clearClientSubscribeTopic(clientId);

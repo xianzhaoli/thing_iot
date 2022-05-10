@@ -41,7 +41,7 @@ public class SystemTopic {
         Channel channel = mqttStoreService.getChannelByClientId(subscribeClient.getClientId());
         switch (subscribeClient.getTopic()){
             case SYS_VERSION:
-                messageService.publishMessage(subscribeClient,subscribeClient.getTopic(), StrUtil.bytes(version),channel);
+                messageService.publishMessage(subscribeClient,subscribeClient.getTopic(), StrUtil.bytes(version),channel,true);
                 break;
             default:
                 break;

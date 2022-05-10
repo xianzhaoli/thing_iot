@@ -38,7 +38,7 @@ public class NettyMqttSever  {
     @PostConstruct
     public void startup() {
         bossGroup = new NioEventLoopGroup();
-        workGroup = new NioEventLoopGroup(12);
+        workGroup = new NioEventLoopGroup(6);
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.channel(NioServerSocketChannel.class);
@@ -71,7 +71,8 @@ public class NettyMqttSever  {
     @PreDestroy
     public void shutDown(){
         try {
-            serverChanel.closeFuture().sync();
+            System.out.println("程序关闭");
+            serverChanel.close().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }finally {

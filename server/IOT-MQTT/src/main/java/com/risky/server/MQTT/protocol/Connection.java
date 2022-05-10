@@ -29,8 +29,7 @@ public class Connection {
         MqttConnAckMessage mqttConnAckMessage = (MqttConnAckMessage) MqttMessageFactory.newMessage(
                 new MqttFixedHeader(MqttMessageType.CONNACK,false,MqttQoS.AT_MOST_ONCE,false,0)
                 ,new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED,true),null);
-        mqttStoreService.mqttClientScribeCache.entriesEntry(mqttConnectMessage.payload().clientIdentifier()).entrySet().parallelStream()
-                .forEach(stringTopicEntry -> mqttStoreService.mqttSubScribeCache.unSubScribe(stringTopicEntry.getKey(),mqttConnectMessage.payload().clientIdentifier()));
+        mqttStoreService.mqttSubScribeCache.unSubScribe(mqttConnectMessage.payload().clientIdentifier());
         mqttStoreService.mqttClientScribeCache.removeKey(mqttConnectMessage.payload().clientIdentifier());
         mqttStoreService.mqttConnectionClientCache.removeKey(mqttConnectMessage.payload().clientIdentifier());
         mqttStoreService.clearClientSubscribeTopic(mqttConnectMessage.payload().clientIdentifier());
@@ -54,7 +53,6 @@ public class Connection {
         if(success){
             //离线消息
             mqttStoreService.asyncWorkerPool.sendOffLineMessage(mqttConnectMessage.payload().clientIdentifier(),null);
-
             int keepAliveSeconds = mqttConnectMessage.variableHeader().keepAliveTimeSeconds();
             channel.attr(AttributeKey.valueOf("clientId")).set(mqttConnectMessage.payload().clientIdentifier()); //连接clientId
             channel.attr(AttributeKey.valueOf("username")).set(mqttConnectMessage.payload().userName()); //连接用户名

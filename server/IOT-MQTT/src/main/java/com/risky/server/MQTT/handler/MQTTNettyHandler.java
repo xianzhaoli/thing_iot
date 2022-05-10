@@ -156,7 +156,7 @@ public class MQTTNettyHandler extends SimpleChannelInboundHandler<MqttMessage> {
                     subscribeClients.parallelStream().forEach(subscribeClient -> {
                         Channel channel1 = mqttProtocolProcess.mqttStoreService.getChannelByClientId(subscribeClient.getClientId());
                         if(channel1 != null & channel1.isActive()){
-                            mqttProtocolProcess.messageService.publishMessage(subscribeClient,topic,payLoad,channel1);
+                            mqttProtocolProcess.messageService.publishMessage(subscribeClient,topic,payLoad,channel1,false);
                         }
                     });
                 }
