@@ -36,7 +36,6 @@ public class MqttStoreService {
 
     private Map<String, List<SubscribeClient>> subByTopic = new ConcurrentHashMap<>(50);
 
-    private Map<String, List<SubscribeClient>> clientIdSubList = new ConcurrentHashMap<>(50);
 
     @Autowired
     public MqttSubScribeCache mqttSubScribeCache;
@@ -72,10 +71,9 @@ public class MqttStoreService {
         if(clientIDChannel.containsKey(clientId)){
             Channel oldChannel =  clientIDChannel.get(clientId);
             boolean isOpen = oldChannel.isOpen();
-             mqttSubScribeCache.unSubScribe(clientId);
+            mqttSubScribeCache.unSubScribe(clientId);
             mqttClientScribeCache.removeKey(clientId);
             mqttConnectionClientCache.removeKey(clientId);
-            clearClientSubscribeTopic(clientId);
             if(isOpen & oldChannel.equals(channel)){
                 //此处参考[MQTT-3.1.0-2]
                 //在一个网络连接上，客户端只能发送一次CONNECT报文。
@@ -110,44 +108,6 @@ public class MqttStoreService {
         return clientIDChannel.get(clientId);
     }
 
-
-    public SubscribeClient bindSubscribeChannel(String topic, MqttQoS mqttQoS, String clientId,boolean cleanSession){
-        if(!subByTopic.containsKey(topic)){
-            subByTopic.put(topic,new CopyOnWriteArrayList<>());
-        }
-        SubscribeClient subscribeClient = new SubscribeClient(mqttQoS,clientId,topic,cleanSession);
-        if(subByTopic.get(topic).contains(subscribeClient)){
-            return null;
-        }
-        subByTopic.get(topic).add(subscribeClient);
-
-        /** 方便维护 **/
-        if(!clientIdSubList.containsKey(clientId)){
-            clientIdSubList.put(clientId,new CopyOnWriteArrayList<>());
-        }
-        clientIdSubList.get(clientId).add(subscribeClient);
-        return subscribeClient;
-    }
-
-    /**
-     * 删除
-     * @param topic
-     * @param clientId
-     */
-    public void unbindSubscribeChannel(String topic,String clientId){
-        clientIdSubList.get(clientId).forEach(subscribeClient -> {
-            if(subscribeClient.getTopic().equals(topic) & subByTopic.containsKey(subscribeClient.getTopic())){
-                subByTopic.get(topic).remove(subscribeClient);
-                clientIdSubList.get(clientId).remove(subscribeClient);
-                if(subByTopic.get(subscribeClient.getTopic()).size() == 0){
-                    subByTopic.remove(topic);
-                }
-            }
-        });
-        if(clientIdSubList.get(clientId).size() == 0){
-            clientIdSubList.remove(clientId);
-        }
-    }
 
     /**
      * 获取已订阅的客户端
@@ -199,13 +159,4 @@ public class MqttStoreService {
     }
 
 
-    public void clearClientSubscribeTopic(String clientId){
-        if(clientIdSubList.containsKey(clientId)){
-            clientIdSubList.get(clientId).parallelStream().forEach(subscribeClient -> {
-                subByTopic.get(subscribeClient.getTopic()).remove(subscribeClient);
-                log.info("清除客户端:{},订阅的topic:{}",clientId,subscribeClient.getTopic());
-            });
-            clientIdSubList.remove(clientId);
-        }
-    }
 }

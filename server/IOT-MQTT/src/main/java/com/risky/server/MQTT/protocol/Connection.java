@@ -29,12 +29,15 @@ public class Connection {
         MqttConnAckMessage mqttConnAckMessage = (MqttConnAckMessage) MqttMessageFactory.newMessage(
                 new MqttFixedHeader(MqttMessageType.CONNACK,false,MqttQoS.AT_MOST_ONCE,false,0)
                 ,new MqttConnAckVariableHeader(MqttConnectReturnCode.CONNECTION_ACCEPTED,true),null);
-        mqttStoreService.mqttSubScribeCache.unSubScribe(mqttConnectMessage.payload().clientIdentifier());
-        mqttStoreService.mqttClientScribeCache.removeKey(mqttConnectMessage.payload().clientIdentifier());
-        mqttStoreService.mqttConnectionClientCache.removeKey(mqttConnectMessage.payload().clientIdentifier());
-        mqttStoreService.clearClientSubscribeTopic(mqttConnectMessage.payload().clientIdentifier());
+
         channel.writeAndFlush(mqttConnAckMessage);
         boolean cleanSession = mqttConnectMessage.variableHeader().isCleanSession();
+        if(cleanSession){
+            mqttStoreService.mqttSubScribeCache.unSubScribe(mqttConnectMessage.payload().clientIdentifier());
+            mqttStoreService.mqttClientScribeCache.removeKey(mqttConnectMessage.payload().clientIdentifier());
+            mqttStoreService.mqttConnectionClientCache.removeKey(mqttConnectMessage.payload().clientIdentifier());
+        }
+
         WillMessage willMessage1 = null;
         if(mqttConnectMessage.variableHeader().isWillFlag()){
             willMessage1 = new WillMessage(mqttConnectMessage.variableHeader().willQos(),mqttConnectMessage.payload().willTopic(),

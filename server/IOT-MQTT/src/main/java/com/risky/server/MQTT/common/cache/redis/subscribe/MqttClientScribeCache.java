@@ -24,10 +24,6 @@ public class MqttClientScribeCache extends MqttRedisCache<Topic> {
         hdel(PUBLISH_KEY_REDIS + clientId,topicName);
     }
 
-    public Map<String,Topic> entriesEntry(String clientId){
-        return hentries(PUBLISH_KEY_REDIS + clientId);
-    }
-
     public void removeKey(String key) {
         delKey(PUBLISH_KEY_REDIS + key);
     }

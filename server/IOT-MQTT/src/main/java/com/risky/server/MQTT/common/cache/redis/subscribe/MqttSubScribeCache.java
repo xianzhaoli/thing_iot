@@ -7,6 +7,7 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,10 +26,19 @@ public class MqttSubScribeCache extends MqttRedisCache<Topic> {
 
     public static final String SUBSCRIBE_KEY_REDIS = "SERVER:MQTT:SUBSCRIBE:";
 
-    /*@PostConstruct
-    public void initTopic(){
-        topics = scan(MqttSubScribeCache.SUBSCRIBE_KEY_REDIS);
-    }*/
+    public static final String SUBSCRIBE_KEY_REDIS_STORE_TOPIC_SET = "STORE";
+
+    @PostConstruct
+    public void storeTopic(){
+        log.info("加载cleanSession为false订阅topic 列表");
+        Set<String> keys = scan(MqttClientScribeCache.PUBLISH_KEY_REDIS);
+        for (String key : keys) {
+            List<Topic> topics = redisTemplate.opsForHash().values(key);
+            for (Topic topic : topics) {
+                subScribe(topic);
+            }
+        }
+    }
 
     /**
      * 添加topic订阅
@@ -68,11 +78,6 @@ public class MqttSubScribeCache extends MqttRedisCache<Topic> {
      */
     public boolean unSubScribe(String topicName,String clientId){
         return topics.remove(new Topic(topicName,clientId));
-    }
-
-    @Cacheable(key = "#topicName")
-    public Map<String,Topic> entriesEntry(String topicName){
-        return hentries(SUBSCRIBE_KEY_REDIS + topicName);
     }
 
     /**

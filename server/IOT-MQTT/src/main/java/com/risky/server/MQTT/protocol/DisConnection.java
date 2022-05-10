@@ -32,7 +32,6 @@ public class DisConnection {
             mqttStoreService.mqttSubScribeCache.unSubScribe(clientId);
             mqttStoreService.mqttClientScribeCache.removeKey(clientId);
             mqttStoreService.mqttConnectionClientCache.removeKey(clientId);
-            mqttStoreService.clearClientSubscribeTopic(clientId);
         }
     }
 

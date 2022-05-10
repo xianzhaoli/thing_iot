@@ -26,7 +26,7 @@ public class StoreConfig {
     public BatchQueue batchQueue(){
         BatchQueue batchQueue = new BatchQueue(new LinkedBlockingDeque(), collection -> mongoTemplate.insert(collection,SessionStoreMessage.class),
                 3000,20, TimeUnit.SECONDS);
-        //executor.execute(batchQueue);
+        executor.execute(batchQueue);
         return batchQueue;
     }
 }

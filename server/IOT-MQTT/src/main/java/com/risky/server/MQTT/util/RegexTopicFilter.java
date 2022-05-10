@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 public class RegexTopicFilter implements MqttTopicFilter,Serializable {
 
     private static final long serialVersionUID = -3830116437499354280L;
-    
+
     private final Pattern regex;
 
     public RegexTopicFilter(String regex) {

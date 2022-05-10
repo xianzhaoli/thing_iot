@@ -60,7 +60,6 @@ public class Subscribe {
                 mqttQoSList.add(mqttTopicSubscription.option().qos().value());
                 topics.add(mqttTopicSubscription.topicName());
                 log.info("客户端: {} ,订阅: {} ,QOS : {} ,成功!",clientId,mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos().value());
-
                 //subscribeClients.add(subscribeClient); //订阅topic集合
             }else{
                 log.info("客户端: {} ,订阅: {} ,QOS : {} ,失败!",clientId,mqttTopicSubscription.topicName(),mqttTopicSubscription.option().qos().value());
