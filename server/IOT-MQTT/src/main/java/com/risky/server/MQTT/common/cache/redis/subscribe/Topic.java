@@ -1,8 +1,7 @@
 package com.risky.server.MQTT.common.cache.redis.subscribe;
 
-import com.risky.server.MQTT.util.MqttTopicFilter;
+import com.risky.server.MQTT.system.session.MqttTopicFilter;
 import io.netty.handler.codec.mqtt.MqttQoS;
-import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;

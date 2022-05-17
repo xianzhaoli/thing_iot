@@ -54,12 +54,12 @@ public class AsyncWorkerPool {
         //发送离线消息
         Map<String, List<SessionStoreMessage>> offlineMessage = mqttConnectionClientCache.getStoreMessage(clientId,topic);
         Channel subscribeChannel = mqttStoreService.getChannelByClientId(clientId);
-
         if(!offlineMessage.isEmpty()){
-            executor.execute(new Woker(() -> offlineMessage.entrySet().parallelStream().forEach(stringListEntry -> stringListEntry.getValue().parallelStream().forEach(sessionStoreMessage -> {
-                messageService.publishMessage(new SubscribeClient(MqttQoS.valueOf(sessionStoreMessage.getQos()),
-                                sessionStoreMessage.getClientId(),stringListEntry.getKey(),false),
-                        stringListEntry.getKey(),sessionStoreMessage.getPayload(),subscribeChannel,false);
+            executor.execute(new Woker(() -> offlineMessage.entrySet().parallelStream().forEach(stringListEntry ->
+                stringListEntry.getValue().stream().forEach(sessionStoreMessage -> {
+                    messageService.publishMessage(new SubscribeClient(MqttQoS.valueOf(sessionStoreMessage.getQos()),
+                                    sessionStoreMessage.getClientId(),stringListEntry.getKey(),false),
+                            stringListEntry.getKey(),sessionStoreMessage.getPayload(),subscribeChannel,false);
             }))));
         }
     }

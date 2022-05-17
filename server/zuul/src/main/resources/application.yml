@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: zuul-gateway
+  main:
+    allow-bean-definition-overriding: true
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+      config:
+        file-extension: yaml
+      server-addr: localhost:8848
+logging:
+  file:
+    path:
+    name: D:\data\log\zuul-server.log
+  level:
+    com: trace
+server:
+  port: 8849
+
+zuul:
+  routes:
+    MQTT_SERVER:
+      serviceId: MQTT_SERVER
+      path: /mqtt/**
+      stripPrefix: false  # 设置为false，表示不增加前缀

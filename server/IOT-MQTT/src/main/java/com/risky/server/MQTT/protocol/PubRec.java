@@ -36,7 +36,7 @@ public class PubRec {
                 MqttMessageIdVariableHeader.from(mqttMessageIdVariableHeader.messageId()),null
                 );
         log.info("PUBREC - clientId: {}, messageId: {}", clientId, mqttMessageIdVariableHeader.messageId());
-        messageService.releaseMessageId(clientId,mqttMessageIdVariableHeader.messageId()); //解锁messageId;
+        //messageService.releaseMessageId(clientId,mqttMessageIdVariableHeader.messageId()); //解锁messageId;
 
         redisMessagePersistent.putPubRelMessage(clientId,new MessageId(mqttMessageIdVariableHeader.messageId(),System.currentTimeMillis(),clientId)); //保存rec 消息ID
         channel.writeAndFlush(mqttMessage);

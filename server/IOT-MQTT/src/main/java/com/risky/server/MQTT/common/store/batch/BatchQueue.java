@@ -52,7 +52,7 @@ public class BatchQueue<T> implements Runnable{
     public void run() {
         try {
             while (true){
-                log.info("batchSaveDataQueue running ------ thread->{},time ->{}",Thread.currentThread().getName(),new Date());
+                //log.info("batchSaveDataQueue running ------ thread->{},time ->{}",Thread.currentThread().getName(),new Date());
                 List<T> list = new CopyOnWriteArrayList();
                 Queues.drain(queue,list,size,timeout, timeUnit);
                 if(!CollectionUtils.isEmpty(list)){

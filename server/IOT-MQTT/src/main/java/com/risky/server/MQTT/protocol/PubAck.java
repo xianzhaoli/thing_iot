@@ -33,7 +33,7 @@ public class PubAck {
     public void sendPubAckMessage(Channel channel, MqttPubAckMessage mqttPubAckMessage){
         int messageId = mqttPubAckMessage.variableHeader().messageId();
         final String clientId = (String) channel.attr(AttributeKey.valueOf("clientId")).get();
-        messageService.releaseMessageId(clientId,messageId);
+        //messageService.releaseMessageId(clientId,messageId);
         redisMessagePersistent.removeRetryMessage(clientId,messageId);
     }
 

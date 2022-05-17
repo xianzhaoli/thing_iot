@@ -64,7 +64,7 @@ public class MqttRedisCache<T> {
             return set;
         });
         long end = System.currentTimeMillis();
-        log.error("scan 耗时{}ms",end-start);
+        //log.info("scan 耗时{}ms",end-start);
         return keys;
     }
 

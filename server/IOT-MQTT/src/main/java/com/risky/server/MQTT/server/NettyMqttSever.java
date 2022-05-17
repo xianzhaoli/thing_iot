@@ -12,6 +12,7 @@ import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +20,11 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
+/**
+ * @author lxz
+ */
 @Component
+@Slf4j
 public class NettyMqttSever  {
 
     private NioEventLoopGroup bossGroup;
@@ -62,6 +67,7 @@ public class NettyMqttSever  {
                         }
                     });
             serverChanel = bootstrap.bind(host,port).sync().channel();
+            log.info("MQTT SERVER RANNING ! BIND HOST 【{}】 LISTEN PORT 【{}】",host,port);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -71,8 +77,8 @@ public class NettyMqttSever  {
     @PreDestroy
     public void shutDown(){
         try {
-            System.out.println("程序关闭");
             serverChanel.close().sync();
+            log.info("MQTT SERVER STOPED !");
         } catch (InterruptedException e) {
             e.printStackTrace();
         }finally {

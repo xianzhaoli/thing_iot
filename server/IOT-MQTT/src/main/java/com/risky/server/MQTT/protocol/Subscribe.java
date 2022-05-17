@@ -8,7 +8,7 @@ import com.risky.server.MQTT.message.MessageService;
 import com.risky.server.MQTT.message.RedisMessagePersistent;
 import com.risky.server.MQTT.message.RetainMessage;
 import com.risky.server.MQTT.system.SystemTopic;
-import com.risky.server.MQTT.util.MqttTopicFilterFactory;
+import com.risky.server.MQTT.system.session.MqttTopicFilterFactory;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.util.AttributeKey;
@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author ：xianzhaoli

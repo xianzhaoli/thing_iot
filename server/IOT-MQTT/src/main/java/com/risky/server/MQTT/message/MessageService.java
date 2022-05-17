@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author ：xianzhaoli
@@ -30,9 +31,9 @@ public class MessageService {
 
     private static final long RELEASE_TIMEOUT = 1000 * 60 * 2; //messageID 两分钟没有回复就释放
 
-    private Map<String, List<MessageId>> lockedMessageId = new ConcurrentHashMap<>(1000);
+    //private Map<String, List<MessageId>> lockedMessageId = new ConcurrentHashMap<>(1000);
 
-    private Map<String,Integer> clientTopicMessageId = new ConcurrentHashMap<>(1000);
+    private Map<String, AtomicInteger> clientTopicMessageId = new ConcurrentHashMap<>(1000);
 
     @Autowired
     private MqttStoreService mqttStoreService;
@@ -41,22 +42,26 @@ public class MessageService {
     private RedisMessagePersistent redisMessagePersistent;
 
     public MessageId getMessageId(final String clientId){
-        long start = System.currentTimeMillis();
         if(!clientTopicMessageId.containsKey(clientId)){
-            clientTopicMessageId.put(clientId,INIT_MESSAGE_ID);
-        }else{
+            clientTopicMessageId.put(clientId,new AtomicInteger(1));
+        }/*else{
             clientTopicMessageId.put(clientId,clientTopicMessageId.get(clientId) + 1);
+        }*/
+        int messageId;
+        synchronized(clientTopicMessageId.get(clientId)){
+            clientTopicMessageId.get(clientId).compareAndSet(0xffff, 1);
+            messageId = clientTopicMessageId.get(clientId).getAndIncrement();
         }
-        int messageId = clientTopicMessageId.get(clientId);
+        return new MessageId(messageId,System.currentTimeMillis(),clientId);
+        //int messageId = clientTopicMessageId.get(clientId);
 
-        if(messageId > MAX_MESSAGE_ID){
+        /*if(messageId > MAX_MESSAGE_ID){
             clientTopicMessageId.put(clientId,INIT_MESSAGE_ID);
         }
         if(!lockedMessageId.containsKey(clientId)){
             lockedMessageId.put(clientId,new CopyOnWriteArrayList<>());
-        }
-        MessageId messageIdObj = new MessageId(messageId,System.currentTimeMillis(),clientId);
-        if(!lockedMessageId.get(clientId).contains(messageIdObj)){
+        }*/
+        /*if(!lockedMessageId.get(clientId).contains(messageIdObj)){
             lockedMessageId.get(clientId).add(messageIdObj); //locked
             long end = System.currentTimeMillis();
             log.info("生成messageId耗时{},messageID:{}",end-start,messageId);
@@ -66,7 +71,7 @@ public class MessageService {
             long end = System.currentTimeMillis();
             log.info("生成messageId耗时{},messageID:{}",end-start,messageId);
             return getNextMessageId(clientId,messageId,clientId);
-        }
+        }*/
 
     }
 
@@ -74,7 +79,7 @@ public class MessageService {
      * 释放超时的messageId
      * @param key
      */
-    private void releaseTimeoutMessageId(String key){
+   /* private void releaseTimeoutMessageId(String key){
         Iterator<MessageId> messageIdIterator = lockedMessageId.get(key).iterator();
         long currentTimeStamp = System.currentTimeMillis();
         while (messageIdIterator.hasNext()){
@@ -83,7 +88,7 @@ public class MessageService {
                 lockedMessageId.get(key).remove(messageId);
             }
         }
-    }
+    }*/
 
     /**
      * 递归获取空闲messageID
@@ -91,7 +96,7 @@ public class MessageService {
      * @param messageId
      * @return
      */
-    private MessageId getNextMessageId(final String key,int messageId,final String clientId){
+    /*private MessageId getNextMessageId(final String key,int messageId,final String clientId){
         messageId += 1;
         if(lockedMessageId.get(key).contains(new MessageId(messageId))){
             getNextMessageId(key,messageId,clientId);
@@ -100,7 +105,7 @@ public class MessageService {
         lockedMessageId.get(key).add(messageIdObj); //locked
         clientTopicMessageId.put(key,messageId);
         return messageIdObj;
-    }
+    }*/
 
     /**
      * 释放messageId
@@ -108,12 +113,12 @@ public class MessageService {
      * @param messageId
      * @return
      */
-    public void releaseMessageId(final String key,final Integer messageId){
+    /*public void releaseMessageId(final String key,final Integer messageId){
         if(lockedMessageId.containsKey(key)){
             lockedMessageId.get(key).remove(messageId);
             log.info("释放了messageId{}",messageId);
         }
-    }
+    }*/
 
 
 
